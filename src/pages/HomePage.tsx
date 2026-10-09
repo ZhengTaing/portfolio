@@ -72,7 +72,7 @@ export default function HomePage() {
         <SectionHeader
           number="03"
           title={<span id="home-lens">Visual Art</span>}
-          aside="Painting, life drawing, observational drawing and 3D environments."
+          aside="Photography, painting, life drawing, observational drawing and 3D environments."
         />
         <div data-reveal>
           <ArtCarousel items={artworks} />

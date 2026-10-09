@@ -111,7 +111,7 @@ export function ImageLightbox({ items, index, onClose, onNavigate }: Props) {
               {item.title}
             </h2>
             <p className="label mt-1 text-[#c9c9c9]">
-              {[artworkCategories.find((c) => c.id === item.category)?.label, item.medium, item.date].filter(Boolean).join(' · ')}
+              {[...new Set([artworkCategories.find((c) => c.id === item.category)?.label, item.medium, item.date])].filter(Boolean).join(' · ')}
             </p>
             {item.caption && <p className="mt-2 max-w-[60ch] text-[#e5e5e5]">{item.caption}</p>}
           </div>

@@ -85,6 +85,7 @@ export interface MusicRelease {
 }
 
 export type ArtworkCategory = 'photography' | '3d' | 'life-drawing' | 'painting' | 'drawing'
+export type PhotoCollection = 'weddings' | 'portraits' | 'food' | 'travel'
 
 export interface Artwork {
   id: string
@@ -94,6 +95,10 @@ export interface Artwork {
   width: number
   height: number
   category: ArtworkCategory
+  /** Photography only: which collection the photo belongs to. */
+  collection?: PhotoCollection
+  /** Shoot or project the piece belongs to, e.g. "Osaka 2025". */
+  series?: string
   /** ISO date (YYYY-MM-DD) or year. */
   date: string
   caption?: string

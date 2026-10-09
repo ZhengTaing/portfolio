@@ -159,9 +159,19 @@ describe('photography', () => {
     const user = userEvent.setup()
     renderAt('/visual-art')
     await screen.findByRole('heading', { level: 1 })
-    await user.click(screen.getByRole('button', { name: 'Painting' }))
+    await user.click(screen.getByRole('button', { name: /^Painting/ }))
     const n = artworks.filter((a) => a.category === 'painting').length
     expect(screen.getAllByRole('button', { name: /in viewer/ })).toHaveLength(n)
+
+    // Photography has its own collections.
+    await user.click(screen.getByRole('button', { name: /^Photography/ }))
+    expect(screen.getAllByRole('button', { name: /in viewer/ })).toHaveLength(
+      artworks.filter((a) => a.category === 'photography').length,
+    )
+    await user.click(screen.getByRole('button', { name: 'Travel & Architecture' }))
+    expect(screen.getAllByRole('button', { name: /in viewer/ })).toHaveLength(
+      artworks.filter((a) => a.collection === 'travel').length,
+    )
   })
 
   it('every artwork has alt text and dimensions', () => {

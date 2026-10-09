@@ -29,3 +29,6 @@ audio-originals/
 # Large WAV masters of private demos (compressed copies live in private-demos/web/)
 private-demos/*.wav
 .DS_Store
+
+# Full-size photo originals (web versions live in public/media/art/photo/)
+photo-originals/

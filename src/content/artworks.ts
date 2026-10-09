@@ -1,4 +1,5 @@
 import type { Artwork, ArtworkCategory } from '../types/content'
+import { photos } from './photography'
 
 export const artworkCategories: { id: ArtworkCategory; label: string }[] = [
   { id: 'photography', label: 'Photography' },
@@ -97,7 +98,7 @@ const entries: Entry[] = [
     altText: "Detail of the film camera body and film reel housing" },
 ]
 
-export const artworks: Artwork[] = entries.map((e) => ({
+const artPieces: Artwork[] = entries.map((e) => ({
   id: `a-${e.slug}`,
   title: e.title,
   imageUrl: `/media/art/${e.slug}.jpg`,
@@ -108,8 +109,64 @@ export const artworks: Artwork[] = entries.map((e) => ({
   date: '',
   medium: e.medium,
   caption: e.caption ?? e.series,
+  series: e.series,
   altText: e.altText,
   featured: e.featured,
 }))
 
-export const featuredArtworks = () => artworks.filter((a) => a.featured)
+const photoPieces: Artwork[] = photos.map((p) => ({
+  id: `a-${p.slug}`,
+  title: p.title,
+  imageUrl: `/media/art/photo/${p.slug}.jpg`,
+  thumbnailUrl: `/media/art/photo/${p.slug}-thumb.jpg`,
+  width: p.width,
+  height: p.height,
+  category: 'photography',
+  collection: p.collection,
+  series: p.series,
+  date: '',
+  medium: 'Photography',
+  caption: p.series,
+  altText: p.altText,
+  featured: p.featured,
+}))
+
+/**
+ * Deal items out one group at a time (A1, B1, C1, A2, B2, …) so a list mixes
+ * kinds of work instead of showing one category in a long run.
+ */
+export function interleave<T>(items: T[], groupOf: (item: T) => string): T[] {
+  const groups = new Map<string, T[]>()
+  for (const item of items) {
+    const key = groupOf(item)
+    groups.set(key, [...(groups.get(key) ?? []), item])
+  }
+  const queues = [...groups.values()]
+  const out: T[] = []
+  for (let i = 0; out.length < items.length; i++) {
+    for (const q of queues) if (q[i]) out.push(q[i])
+  }
+  return out
+}
+
+/** Every piece in source order (each shoot or series kept together). */
+export const artworksInOrder: Artwork[] = [...photoPieces, ...artPieces]
+
+/** Every piece, mixed across categories (and photo collections) for the "All" view. */
+export const artworks: Artwork[] = interleave([...photoPieces, ...artPieces], (a) => a.collection ?? a.category)
+
+/** Featured pieces for the homepage carousel, alternating between kinds of work. */
+const carouselPhotoOrder = ['weddings', 'travel', 'portraits', 'food']
+
+export const featuredArtworks = () =>
+  interleave(
+    [
+      // Lead with a different kind of photo each time photography comes round.
+      ...interleave(
+        photoPieces.filter((a) => a.featured),
+        (a) => a.collection ?? '',
+      ).sort((a, b) => carouselPhotoOrder.indexOf(a.collection ?? '') - carouselPhotoOrder.indexOf(b.collection ?? '')),
+      ...artPieces.filter((a) => a.featured),
+    ],
+    (a) => a.category,
+  )
