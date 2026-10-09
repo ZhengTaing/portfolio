@@ -37,3 +37,4 @@ photo-originals/
 private-demos/*
 !private-demos/README.md
 .vercel
+.env*

@@ -1,4 +1,4 @@
-import { list } from '../../server/demos'
+import { list } from '../../server/demos.js'
 
 export function GET(request: Request) {
   return list(request)
