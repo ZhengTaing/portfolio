@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Zheng Taing — Design Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Instrument+Serif:ital@0;1&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --paper: #f5f0e8; --ink: #0e0e0e; --signal: #e8492a; --jade: #2e6a50;
+    --cream: #f6e7dd; --graphite: #232323; --mute: #8a8a8a;
+    --rail: 56px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--paper); color: var(--ink); font-family: "Space Mono", monospace; font-size: 13px; letter-spacing: .02em; }
+  .display { font-family: "Archivo", sans-serif; font-weight: 800; font-stretch: 112%; letter-spacing: -.035em; line-height: .86; text-transform: uppercase; }
+  .wide { font-stretch: 125%; font-weight: 900; letter-spacing: -.02em; }
+  .script { font-family: "Instrument Serif", serif; font-style: italic; text-transform: none; letter-spacing: 0; font-weight: 400; }
+  .label { text-transform: uppercase; font-size: 11px; letter-spacing: .08em; }
+  a { color: inherit; }
+
+  .rail { position: fixed; inset: 0 auto 0 0; width: var(--rail); background: var(--paper); border-right: 2px solid var(--ink); z-index: 10; display: flex; align-items: center; justify-content: center; }
+  .rail span { writing-mode: vertical-rl; transform: rotate(180deg); font-weight: 700; font-size: 10px; letter-spacing: .18em; text-transform: uppercase; }
+  .top { position: fixed; top: 0; left: var(--rail); right: 0; display: flex; justify-content: space-between; padding: 22px 32px; z-index: 9; mix-blend-mode: difference; color: #fff; }
+  .logo { font-family: Archivo; font-weight: 900; font-size: 22px; line-height: .9; letter-spacing: -.04em; }
+  .nav { text-align: right; line-height: 2; }
+  .nav b { opacity: .55; font-weight: 400; margin-right: 6px; }
+
+  section { margin-left: var(--rail); padding: 120px 32px 80px; position: relative; overflow: hidden; }
+  .sec-head { display: flex; align-items: baseline; gap: 14px; border-bottom: 3px solid currentColor; padding-bottom: 22px; margin-bottom: 48px; }
+  .sec-head small { font-size: 14px; }
+  .sec-head h2 { font-size: clamp(48px, 7vw, 110px); }
+  .mocknote { position: absolute; bottom: 16px; right: 32px; background: #ffe600; color: #000; padding: 4px 8px; font-size: 10px; text-transform: uppercase; letter-spacing: .1em; }
+
+  /* HOME */
+  .home { min-height: 100vh; display: flex; flex-direction: column; justify-content: flex-end; padding-top: 140px; }
+  .home h1 { font-size: clamp(64px, 11vw, 190px); position: relative; }
+  .home h1 .script { position: absolute; left: 12%; top: 38%; font-size: .55em; color: var(--signal); transform: rotate(-6deg); }
+  .home .rule { border-top: 3px solid var(--ink); margin-top: 40px; padding-top: 28px; display: grid; grid-template-columns: 1.2fr 1fr 1fr 1fr; gap: 24px; }
+  .home .rule p { text-transform: uppercase; line-height: 1.7; }
+  .disc { border-left: 2px solid var(--ink); padding-left: 14px; text-decoration: none; display: block; }
+  .disc strong { display: block; font-family: Archivo; font-size: 26px; font-weight: 800; letter-spacing: -.03em; text-transform: uppercase; margin: 6px 0; }
+  .disc em { font-style: normal; text-decoration: underline; text-underline-offset: 4px; }
+  .disc:hover strong { color: var(--signal); }
+
+  /* WORK */
+  .work { background: var(--ink); color: #fff; }
+  .row { display: grid; grid-template-columns: 70px 1fr 240px 150px; gap: 24px; align-items: center; border-top: 1px solid #333; padding: 34px 0; }
+  .row:hover h3 { color: var(--signal); }
+  .row h3 { font-family: Archivo; font-weight: 800; font-size: clamp(32px, 4.5vw, 64px); letter-spacing: -.035em; text-transform: uppercase; line-height: .9; transition: color .2s; }
+  .row p { color: #b9b9b9; max-width: 56ch; margin-top: 12px; line-height: 1.6; }
+  .row .yr { color: var(--mute); }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag { border: 1px solid #555; padding: 3px 7px; font-size: 10px; text-transform: uppercase; }
+  .tag.wip { border-color: var(--signal); color: var(--signal); }
+  .btn { border: 2px solid currentColor; padding: 12px 18px; text-transform: uppercase; text-decoration: none; text-align: center; font-weight: 700; }
+  .filters { display: flex; gap: 8px; margin-bottom: 18px; }
+  .filters span { padding: 6px 10px; border: 1px solid #555; text-transform: uppercase; font-size: 11px; }
+  .filters span.on { background: #fff; color: #000; border-color: #fff; }
+
+  /* SOUND */
+  .sound { background: var(--signal); color: var(--ink); }
+  .sound .sec-head { color: #fff; }
+  .sound-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; position: relative; z-index: 1; }
+  .sound .lead { font-family: Archivo; font-weight: 600; font-size: clamp(22px, 2.4vw, 34px); line-height: 1.2; letter-spacing: -.01em; margin-bottom: 40px; }
+  .track { display: grid; grid-template-columns: 1fr auto auto; gap: 16px; border-bottom: 2px solid var(--ink); padding: 18px 0; text-transform: uppercase; }
+  .track .st { font-size: 10px; padding: 2px 6px; background: var(--ink); color: var(--signal); }
+  .player { background: var(--ink); color: #fff; padding: 20px; display: grid; grid-template-columns: 120px 1fr; gap: 18px; }
+  .art { aspect-ratio: 1; background: repeating-linear-gradient(90deg, #e8492a 0 8px, #0e0e0e 8px 16px); }
+  .bars { display: flex; gap: 3px; align-items: end; height: 40px; margin-top: 14px; }
+  .bars i { flex: 1; background: var(--signal); }
+  .ghost { position: absolute; bottom: -.18em; left: 20px; font-size: 26vw; color: rgba(255,255,255,.14); pointer-events: none; white-space: nowrap; }
+
+  /* LENS */
+  .lens { background: var(--graphite); color: #eee; }
+  .chips { display: flex; gap: 8px; margin-bottom: 22px; flex-wrap: wrap; }
+  .chips span { border: 1px solid #555; padding: 6px 10px; text-transform: uppercase; font-size: 11px; }
+  .chips span.on { background: #eee; color: #111; }
+  .masonry { columns: 3 260px; column-gap: 14px; }
+  .ph { break-inside: avoid; margin-bottom: 14px; position: relative; }
+  .ph div { width: 100%; }
+  .ph figcaption { display: flex; justify-content: space-between; padding: 8px 0 4px; color: #9b9b9b; text-transform: uppercase; font-size: 10px; }
+
+  /* ABOUT — green editorial */
+  .about { background: var(--jade); color: var(--cream); }
+  .about h2.big { font-size: clamp(56px, 10vw, 170px); }
+  .about .script { font-size: clamp(36px, 5vw, 80px); display: block; margin: -8px 0 32px 8%; }
+  .about-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 48px; border-top: 1px solid rgba(246,231,221,.4); padding-top: 32px; }
+  .about table { width: 100%; border-collapse: collapse; text-transform: uppercase; }
+  .about td { border-bottom: 1px solid rgba(246,231,221,.35); padding: 12px 0; }
+  .about .links a { display: inline-block; font-family: Archivo; font-weight: 800; font-size: 22px; text-transform: uppercase; border-bottom: 3px solid var(--cream); margin: 0 22px 14px 0; text-decoration: none; }
+  .stamp { background: var(--cream); color: var(--jade); padding: 6px 10px; display: inline-block; font-weight: 700; text-transform: uppercase; margin-bottom: 18px; }
+  footer { margin-left: var(--rail); background: var(--ink); color: #fff; padding: 36px 32px; display: flex; justify-content: space-between; align-items: center; }
+  footer .script { font-size: 34px; }
+
+  @media (max-width: 760px) {
+    :root { --rail: 0px; } .rail { display: none; }
+    section { padding: 100px 16px 60px; } .top { padding: 16px; }
+    .home .rule, .sound-grid, .about-grid { grid-template-columns: 1fr; }
+    .row { grid-template-columns: 1fr; gap: 12px; }
+    footer { flex-direction: column; gap: 12px; padding: 28px 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="rail"><span>Engineering — Music — Photography — Art · Portfolio v1.0</span></div>
+<header class="top">
+  <div class="logo">ZHENG<br/>TAING</div>
+  <nav class="nav label"><div><b>01</b>Work</div><div><b>02</b>Sound</div><div><b>03</b>Lens</div><div><b>04</b>Info</div></nav>
+</header>
+
+<!-- HOME -->
+<section class="home">
+  <span class="mocknote">Mockup · Home</span>
+  <p class="label" style="margin-bottom:22px">Index / Zheng Taing — Los Angeles, CA <span style="opacity:.5">[placeholder location]</span></p>
+  <h1 class="display">Software,<br/>Sound &amp;<br/>Image<span class="script">a multi-disciplinary practice</span></h1>
+  <div class="rule">
+    <p>Engineer, songwriter and photographer building at the intersection of algorithmic precision and human expression.</p>
+    <a class="disc" href="#work"><span class="label">01 / Engineering</span><strong>Projects</strong><em>Explore projects →</em></a>
+    <a class="disc" href="#sound"><span class="label">02 / Music</span><strong>Sound</strong><em>Listen to my music →</em></a>
+    <a class="disc" href="#lens"><span class="label">03 / Visual</span><strong>Lens</strong><em>View photography →</em></a>
+  </div>
+</section>
+
+<!-- WORK -->
+<section class="work" id="work">
+  <span class="mocknote">Mockup · Projects</span>
+  <div class="sec-head"><small>01</small><h2 class="display">Selected Works</h2></div>
+  <div class="filters"><span class="on">All</span><span>iOS / AI</span><span>Apps</span><span>Games</span><span>Tools</span></div>
+  <div class="row"><span class="yr">2025</span>
+    <div><h3>mAgI</h3><p>AI-powered iOS chatbot. Conversational assistant built natively in Swift.</p></div>
+    <div class="tags"><span class="tag">Swift</span><span class="tag">SwiftUI</span><span class="tag">LLM API</span></div>
+    <a class="btn" href="#">Case study</a></div>
+  <div class="row"><span class="yr">2024</span>
+    <div><h3>Looklab</h3><p>Wardrobe and retail application for building and trying on outfits.</p></div>
+    <div class="tags"><span class="tag">React Native</span><span class="tag wip">In progress</span></div>
+    <a class="btn" href="#">Case study</a></div>
+  <div class="row"><span class="yr">2023</span>
+    <div><h3>Lost</h3><p>First-person horror game built in Unreal Engine.</p></div>
+    <div class="tags"><span class="tag">Unreal 5</span><span class="tag">Blueprints</span><span class="tag wip">Prototype</span></div>
+    <a class="btn" href="#">Case study</a></div>
+</section>
+
+<!-- SOUND -->
+<section class="sound" id="sound">
+  <span class="mocknote">Mockup · Music</span>
+  <div class="sec-head"><small>02</small><h2 class="display">Sonic Structures</h2></div>
+  <div class="sound-grid">
+    <div>
+      <p class="lead">Songwriter, vocalist and producer. Writing records that sit between bedroom pop and synthetic texture.</p>
+      <div class="track"><span>ZT-001: Release Title A</span><span class="st">Single</span><span>2025</span></div>
+      <div class="track"><span>ZT-002: Release Title B</span><span class="st">EP</span><span>2024</span></div>
+      <div class="track"><span>ZT-003: Release Title C</span><span class="st">Prod. credit</span><span>2024</span></div>
+    </div>
+    <div>
+      <div class="player">
+        <div class="art"></div>
+        <div><p class="label" style="color:#e8492a">Now playing · embed</p>
+          <p style="font-family:Archivo;font-weight:800;font-size:26px;text-transform:uppercase;letter-spacing:-.02em;margin-top:6px">Release Title A</p>
+          <p class="label" style="opacity:.6;margin-top:4px">Written · Produced · Vocals</p>
+          <div class="bars"><i style="height:30%"></i><i style="height:70%"></i><i style="height:45%"></i><i style="height:90%"></i><i style="height:60%"></i><i style="height:35%"></i><i style="height:80%"></i><i style="height:50%"></i><i style="height:25%"></i><i style="height:65%"></i><i style="height:40%"></i><i style="height:85%"></i></div>
+        </div>
+      </div>
+      <p class="label" style="margin-top:14px">Spotify · Apple Music · SoundCloud · YouTube</p>
+    </div>
+  </div>
+  <div class="display ghost">Sound</div>
+</section>
+
+<!-- LENS -->
+<section class="lens" id="lens">
+  <span class="mocknote">Mockup · Photography</span>
+  <div class="sec-head"><small>03</small><h2 class="display">Lens / Capture</h2></div>
+  <div class="chips"><span class="on">All</span><span>Portraits</span><span>Street</span><span>Music</span><span>Experimental</span></div>
+  <div class="masonry">
+    <figure class="ph"><div style="aspect-ratio:3/4;background:linear-gradient(160deg,#d4d3d8,#6f6f78)"></div><figcaption><span>Portrait_01</span><span>35mm</span></figcaption></figure>
+    <figure class="ph"><div style="aspect-ratio:4/3;background:linear-gradient(20deg,#3a3a3a,#9a9aa2)"></div><figcaption><span>Street_04</span><span>Digital</span></figcaption></figure>
+    <figure class="ph"><div style="aspect-ratio:1;background:#e8492a"></div><figcaption><span>Study_in_red</span><span>Print</span></figcaption></figure>
+    <figure class="ph"><div style="aspect-ratio:4/5;background:linear-gradient(200deg,#bdbcc4,#2b2b2e)"></div><figcaption><span>Live_set_02</span><span>Music</span></figcaption></figure>
+    <figure class="ph"><div style="aspect-ratio:16/10;background:radial-gradient(circle at 30% 40%,#a7f0cf,#2e6a50 60%,#0e0e0e)"></div><figcaption><span>Strata_01</span><span>Experimental</span></figcaption></figure>
+    <figure class="ph"><div style="aspect-ratio:3/4;background:linear-gradient(90deg,#e1e1e3,#bcbcc2)"></div><figcaption><span>Portrait_02</span><span>35mm</span></figcaption></figure>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section class="about" id="info">
+  <span class="mocknote">Mockup · About & Contact</span>
+  <p class="label" style="margin-bottom:18px">04 / Info</p>
+  <h2 class="display wide big">Let's<br/>Connect</h2>
+  <span class="script">technology, sound &amp; image</span>
+  <div class="about-grid">
+    <div>
+      <span class="stamp">Biography</span>
+      <p style="text-transform:uppercase;line-height:1.8;max-width:60ch">Placeholder bio. Zheng Taing is a software engineer, songwriter and photographer. The same instincts for structure and rhythm run through the code, the records and the frames.</p>
+      <table style="margin-top:28px"><tr><td>Education</td><td>[School / Degree]</td><td>[Year]</td></tr><tr><td>Experience</td><td>[Role / Company]</td><td>[Years]</td></tr><tr><td>Credits</td><td>[Selected credit]</td><td>[Year]</td></tr></table>
+    </div>
+    <div class="links">
+      <span class="stamp">Contact</span><br/>
+      <a href="#">Email</a><a href="#">GitHub</a><a href="#">LinkedIn</a><a href="#">Spotify</a><a href="#">Instagram</a><a href="#">Resume ↓</a>
+    </div>
+  </div>
+</section>
+<footer><span class="label">© 2026 Zheng Taing · No trackers</span><span class="script">Designed for the present day</span><span class="label">Back to top ↑</span></footer>
+</body>
+</html>

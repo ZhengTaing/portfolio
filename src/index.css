@@ -1,0 +1,226 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens.
+ * Each section ("room") sets its own palette through [data-theme]; components
+ * only ever reference the semantic colors (bg / fg / accent / muted / line).
+ */
+@theme {
+  --font-display: 'Archivo Variable', 'Archivo', system-ui, sans-serif;
+  --font-mono: 'Space Mono', ui-monospace, monospace;
+  --font-script: 'Instrument Serif', Georgia, serif;
+
+  --color-paper: #f5f0e8;
+  --color-ink: #0e0e0e;
+  --color-signal: #e8492a;
+  --color-jade: #2e6a50;
+  --color-cream: #f6e7dd;
+  --color-graphite: #232323;
+
+  --breakpoint-xs: 30rem;
+}
+
+@theme inline {
+  --color-bg: var(--room-bg);
+  --color-fg: var(--room-fg);
+  --color-accent: var(--room-accent);
+  --color-muted: var(--room-muted);
+  --color-line: var(--room-line);
+  --color-surface: var(--room-surface);
+}
+
+:root,
+[data-theme='paper'] {
+  --room-bg: var(--color-paper);
+  --room-fg: var(--color-ink);
+  --room-accent: #c4351a;
+  --room-muted: #5c5852;
+  --room-line: var(--color-ink);
+  --room-surface: #ebe4d8;
+}
+[data-theme='ink'] {
+  --room-bg: var(--color-ink);
+  --room-fg: #ffffff;
+  --room-accent: #ff6a4a;
+  --room-muted: #a8a8a8;
+  --room-line: #3a3a3a;
+  --room-surface: #1a1a1a;
+}
+[data-theme='signal'] {
+  --room-bg: var(--color-signal);
+  --room-fg: var(--color-ink);
+  /* White on signal orange only passes contrast at large sizes, so the
+     accent used for small text stays ink. */
+  --room-accent: var(--color-ink);
+  --room-muted: #3d1409;
+  --room-line: var(--color-ink);
+  --room-surface: var(--color-ink);
+}
+[data-theme='graphite'] {
+  --room-bg: var(--color-graphite);
+  --room-fg: #ececec;
+  --room-accent: #ff6a4a;
+  --room-muted: #a3a3a3;
+  --room-line: #4a4a4a;
+  --room-surface: #2e2e2e;
+}
+[data-theme='jade'] {
+  --room-bg: var(--color-jade);
+  --room-fg: var(--color-cream);
+  --room-accent: #ffd8c4;
+  --room-muted: #cfe0d6;
+  --room-line: rgb(246 231 221 / 0.4);
+  --room-surface: #255a43;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-bg text-fg font-mono antialiased;
+    font-size: 0.8125rem;
+    letter-spacing: 0.02em;
+  }
+  ::selection {
+    background: var(--color-signal);
+    color: var(--color-ink);
+  }
+  :focus-visible {
+    outline: 3px solid var(--room-accent, var(--color-signal));
+    outline-offset: 3px;
+  }
+  img {
+    @apply max-w-full;
+  }
+}
+
+@layer components {
+  .display {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-stretch: 112%;
+    letter-spacing: -0.035em;
+    line-height: 0.86;
+    text-transform: uppercase;
+  }
+  .display-wide {
+    font-stretch: 125%;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+  }
+  .script {
+    font-family: var(--font-script);
+    font-style: italic;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .label {
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    font-size: 0.6875rem;
+    letter-spacing: 0.08em;
+  }
+  .link-underline {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 4px;
+  }
+  .link-underline:hover {
+    text-decoration-thickness: 2px;
+  }
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 border-2 border-current px-4 py-3 font-bold uppercase transition-colors;
+  }
+  .btn-outline:hover {
+    background: var(--room-fg);
+    color: var(--room-bg);
+  }
+  .skip-link {
+    @apply sr-only;
+  }
+  .skip-link:focus {
+    @apply not-sr-only bg-ink text-paper fixed top-2 left-2 z-[100] px-4 py-2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Decorative oversized words are drawn from a data attribute so they stay
+   out of the accessibility tree and contrast audits. */
+.ghost-word::before {
+  content: attr(data-word);
+}
+
+/* Media-player range inputs (seek and volume). */
+.demo-range {
+  appearance: none;
+  height: 1.25rem;
+  background: transparent;
+  cursor: pointer;
+}
+.demo-range::-webkit-slider-runnable-track {
+  height: 4px;
+  background: linear-gradient(to right, var(--room-accent) var(--progress, 0%), var(--room-line) var(--progress, 0%));
+}
+.demo-range::-moz-range-track {
+  height: 4px;
+  background: linear-gradient(to right, var(--room-accent) var(--progress, 0%), var(--room-line) var(--progress, 0%));
+}
+.demo-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  background: var(--room-fg);
+  border: 0;
+}
+.demo-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: var(--room-fg);
+  border: 0;
+  border-radius: 0;
+}
+
+@keyframes eq {
+  from {
+    transform: scaleY(0.35);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(1.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
