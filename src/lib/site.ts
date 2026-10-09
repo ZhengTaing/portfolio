@@ -22,5 +22,5 @@ export function themeForPath(pathname: string): RoomTheme {
 }
 
 /** Public address of the site (used for canonical links, sharing tags and the sitemap). */
-export const SITE_URL = 'https://zhengtaing.github.io'
+export const SITE_URL = 'https://zheng-taing-portfolio.vercel.app'
 export const SITE_NAME = 'Zheng Taing'
