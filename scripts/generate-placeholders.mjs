@@ -74,12 +74,6 @@ function svg({ name, w, h, palette, pattern, label }) {
 }
 
 const files = [
-  // Projects (16:10)
-  ...['magi', 'looklab', 'lost', 'stockroom', 'tempo-tools'].flatMap((slug, i) => [
-    { name: `projects/${slug}/cover`, w: 1600, h: 1000, palette: ['ink', 'jade', 'mono', 'signal', 'ink'][i], pattern: ['grid', 'circles', 'gradient', 'stripes', 'stripes'][i], label: `${slug} / cover` },
-    { name: `projects/${slug}/shot-1`, w: 1600, h: 1000, palette: 'mono', pattern: 'grid', label: `${slug} / screen 01` },
-    { name: `projects/${slug}/shot-2`, w: 1600, h: 1000, palette: 'ink', pattern: 'stripes', label: `${slug} / screen 02` },
-  ]),
   // Release artwork (square)
   ...['release-a', 'release-b', 'release-c', 'release-d'].map((slug, i) => ({
     name: `music/${slug}`,

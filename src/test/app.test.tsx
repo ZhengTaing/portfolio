@@ -75,7 +75,7 @@ describe('projects', () => {
     await user.click(screen.getByRole('button', { name: /Games/ }))
     const games = projects.filter((p) => p.category === 'games')
     expect(screen.getByRole('status')).toHaveTextContent(`Showing ${games.length}`)
-    expect(screen.getByRole('link', { name: 'Lost' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /^Lost/ })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Looklab' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /All/ }))
     expect(screen.getByRole('link', { name: 'Looklab' })).toBeInTheDocument()

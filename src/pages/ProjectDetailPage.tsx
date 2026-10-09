@@ -49,10 +49,26 @@ export default function ProjectDetailPage() {
           <StatusBadge status={project.status} />
           {project.placeholder && <PlaceholderNotice />}
         </div>
-        <h1 className="font-display text-[clamp(3.5rem,11vw,10rem)] leading-[0.85] font-extrabold tracking-[-0.045em] [font-stretch:112%]">
+        <h1 className="font-display text-[clamp(2.75rem,8.5vw,8rem)] leading-[0.88] font-extrabold tracking-[-0.045em] [font-stretch:112%]">
           {project.title}
         </h1>
         <p className="mt-8 max-w-3xl text-lg leading-snug sm:text-2xl">{project.description}</p>
+        {(project.context || project.team) && (
+          <dl className="label text-muted mt-6 grid gap-1.5">
+            {project.context && (
+              <div>
+                <dt className="sr-only">Context</dt>
+                <dd>{project.context}</dd>
+              </div>
+            )}
+            {project.team && (
+              <div>
+                <dt className="inline">Team: </dt>
+                <dd className="inline">{project.team.join(', ')}</dd>
+              </div>
+            )}
+          </dl>
+        )}
 
         <div className="mt-8 flex flex-wrap gap-3">
           {project.repositoryUrl && (

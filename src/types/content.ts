@@ -40,6 +40,10 @@ export interface Project {
     process: string
     outcomes: string
   }
+  /** Course, event or client the project was made for. */
+  context?: string
+  /** Everyone who worked on it (shown on the case study). */
+  team?: string[]
   /** True while the entry still holds placeholder copy. */
   placeholder?: boolean
 }
