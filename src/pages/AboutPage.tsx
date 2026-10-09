@@ -1,6 +1,6 @@
 import { ContactLinks } from '../components/ContactLinks'
 import { PortraitSheet } from '../components/PortraitSheet'
-import { ExternalLink, PlaceholderNotice } from '../components/ui'
+import { ExternalLink, Tag } from '../components/ui'
 import { profile } from '../content/profile'
 import type { TimelineEntry } from '../types/content'
 import { usePageMeta } from '../lib/usePageMeta'
@@ -18,11 +18,9 @@ function Timeline({ entries }: { entries: TimelineEntry[] }) {
           className="border-line grid gap-1 border-b py-3 uppercase sm:grid-cols-[1fr_1fr_auto] sm:gap-4"
         >
           <span className="font-bold">{e.title}</span>
-          <span>
-            {e.organization}
-            {e.detail && <span className="text-muted block normal-case">{e.detail}</span>}
-          </span>
+          <span>{e.organization}</span>
           <span className="text-muted">{e.period}</span>
+          {e.detail && <span className="text-muted normal-case sm:col-span-3">{e.detail}</span>}
         </li>
       ))}
     </ul>
@@ -58,7 +56,7 @@ export default function AboutPage() {
           <p className="label mb-3">Email</p>
           <a
             href={`mailto:${profile.email}`}
-            className="font-display block text-[clamp(1.75rem,4.5vw,3.75rem)] leading-none font-extrabold tracking-[-0.03em] break-all hover:underline"
+            className="font-display block text-[clamp(1.5rem,3.4vw,3.25rem)] leading-none font-extrabold tracking-[-0.03em] [overflow-wrap:anywhere] hover:underline"
           >
             {profile.email}
           </a>
@@ -80,10 +78,7 @@ export default function AboutPage() {
 
       <div data-reveal className="mt-20 grid gap-14 lg:grid-cols-[1.3fr_1fr]">
         <section>
-          <div className="flex items-start justify-between gap-4">
-            <Stamp>Biography</Stamp>
-            <PlaceholderNotice />
-          </div>
+          <Stamp>Biography</Stamp>
           <div className="max-w-[62ch] space-y-4 text-[0.9375rem] leading-relaxed">
             {profile.biography.map((p) => (
               <p key={p}>{p}</p>
@@ -105,7 +100,17 @@ export default function AboutPage() {
           <Stamp>Education</Stamp>
           <Timeline entries={profile.education} />
           <div className="mt-12">
-            <Stamp>Selected achievements &amp; credits</Stamp>
+            <Stamp>Technical skills</Stamp>
+            <ul className="flex flex-wrap gap-1.5">
+              {profile.skills.map((s) => (
+                <li key={s}>
+                  <Tag>{s}</Tag>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="mt-12">
+            <Stamp>Awards &amp; competitions</Stamp>
             <ul className="space-y-2 uppercase">
               {profile.achievements.map((a) => (
                 <li key={a} className="border-line border-b pb-2">

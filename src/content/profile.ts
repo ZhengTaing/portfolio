@@ -1,7 +1,7 @@
 import type { Profile } from '../types/content'
 
-// PLACEHOLDER: replace every bracketed value and the example URLs below with
-// approved, real information before launch.
+// Filled in from the résumé and Linktree. The phone number is intentionally
+// left off the public site.
 export const profile: Profile = {
   name: 'Zheng Taing',
   headline: 'Software Engineer · Singer-Songwriter · Photographer',
@@ -23,39 +23,53 @@ export const profile: Profile = {
   introduction:
     'Engineer, songwriter and photographer building at the intersection of algorithmic precision and human expression.',
   biography: [
-    '[Placeholder bio] Zheng Taing is a software engineer who writes and produces music and works behind a camera. The projects range from AI-powered iOS apps and Unreal Engine games to records and photo series.',
-    '[Placeholder bio] The same instincts carry across all three: structure, rhythm and an eye for detail. Code gets composed like a song, and a song gets framed like a photograph.',
+    'I\u2019m Keang Zheng Taing: a software developer, singer-songwriter and photographer. I studied Computer Science with a minor in Animation at Cal State Fullerton, building iOS apps, games in Unreal Engine and machine-learning research along the way.',
+    'Outside of code I release my own music (ily., romeo and rose), write songs for other artists, and shoot weddings, portraits, food and travel photography. I also spent years running the floor at a superfood bar, which taught me to lead teams and fix whatever breaks.',
   ],
   practice:
     'Technology is how I build things; music and photography are how I notice things. Each discipline sharpens the others: debugging teaches patience in the studio, arranging a track teaches restraint in an interface, and framing a photograph teaches what to leave out.',
   // Add the PDF to public/ (e.g. public/resume.pdf) and set resumeUrl: '/resume.pdf'.
   resumeUrl: undefined,
-  email: 'hello@example.com',
+  email: 'zhengofficially@gmail.com',
   availability: 'Open to software roles, music collaborations and photo commissions',
   socialLinks: [
-    { platform: 'email', label: 'Email', url: 'mailto:hello@example.com', primary: true },
-    { platform: 'github', label: 'GitHub', url: 'https://github.com/', primary: true },
-    { platform: 'linkedin', label: 'LinkedIn', url: 'https://www.linkedin.com/', primary: true },
+    { platform: 'email', label: 'Email', url: 'mailto:zhengofficially@gmail.com', primary: true },
+    { platform: 'github', label: 'GitHub', url: 'https://github.com/ZhengTaing', primary: true },
+    { platform: 'linkedin', label: 'LinkedIn', url: 'https://www.linkedin.com/in/keangzhengtaing/', primary: true },
     { platform: 'spotify', label: 'Spotify', url: 'https://open.spotify.com/artist/4Uk3l2GWB8dG0v4OaImCw7', primary: true },
     { platform: 'apple-music', label: 'Apple Music', url: 'https://music.apple.com/ca/artist/zheng-taing/1451245421' },
     { platform: 'youtube', label: 'YouTube', url: 'https://www.youtube.com/@ZhengTaing' },
     { platform: 'instagram', label: 'Instagram', url: 'https://www.instagram.com/zhengtaing' },
     { platform: 'tiktok', label: 'TikTok', url: 'https://www.tiktok.com/@zhengtaingg' },
   ],
-  education: [{ title: '[Degree, Major]', organization: '[University]', period: '[Year – Year]' }],
-  experience: [
+  education: [
     {
-      title: '[Software Engineer]',
-      organization: '[Company]',
-      period: '[Year – Present]',
-      detail: '[One line on scope, stack and impact.]',
-    },
-    {
-      title: '[Songwriter / Producer]',
-      organization: 'Independent',
-      period: '[Year – Present]',
-      detail: '[Releases, sessions and collaborations.]',
+      title: 'B.S. Computer Science, Minor in Animation',
+      organization: 'California State University, Fullerton',
+      period: '2025',
     },
   ],
-  achievements: ['[Selected achievement or award]', '[Selected songwriting or production credit]', '[Exhibition or publication]'],
+  experience: [
+    {
+      title: 'Operational Manager',
+      organization: 'TRU Bowl Superfood Bar',
+      period: 'Mar 2022 – Present',
+      detail: 'Lead a team of 12+, managing weekly schedules and payroll, and diagnosed 20+ IT issues across communications, point-of-sale and printer systems.',
+    },
+    {
+      title: 'Council Member',
+      organization: 'ECS Diversity & Leadership Summit',
+      period: 'Sept 2024 – Feb 2025',
+      detail: 'Built the summit timeline, from keynotes and panels to networking, and recruited and coordinated speakers and industry leaders.',
+    },
+    { title: 'Algorithm Officer', organization: 'Association for Computing Machinery (ACM), CSUF', period: 'Dec 2024 – May 2025' },
+    { title: 'Marketing Committee', organization: 'FullyHacks 2025', period: 'Sept 2024 – Apr 2025' },
+  ],
+  achievements: [
+    'Best Beginner Hack, FullyHacks (2021)',
+    'ICPC 2025 participant (Nov 2024)',
+    'RTX Autonomous Vehicle Competition, Mapping & Path Team (2024–2025)',
+    'mAgI presented at the ECS Student Project Innovation Expo (2024)',
+  ],
+  skills: ['Python', 'C++', 'C#', 'Swift', 'JavaScript', 'HTML', 'R', 'Assembly', 'Adobe Creative Suite'],
 }

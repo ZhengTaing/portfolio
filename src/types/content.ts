@@ -4,7 +4,7 @@
  * any components.
  */
 
-export type ProjectCategory = 'ios-ai' | 'apps' | 'games' | 'tools' | 'creative-code'
+export type ProjectCategory = 'ios-ai' | 'apps' | 'games' | 'ml' | 'design' | 'tools' | 'creative-code'
 export type ProjectStatus = 'complete' | 'in-progress' | 'prototype' | 'archived'
 
 export interface MediaImage {
@@ -166,4 +166,5 @@ export interface Profile {
   education: TimelineEntry[]
   experience: TimelineEntry[]
   achievements: string[]
+  skills: string[]
 }

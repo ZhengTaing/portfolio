@@ -187,7 +187,7 @@ describe('about', () => {
   it('shows contact email and external profiles open safely', async () => {
     renderAt('/about')
     await screen.findByRole('heading', { level: 1 })
-    expect(screen.getAllByRole('link', { name: /hello@example.com/i })[0]).toHaveAttribute('href', expect.stringMatching(/^mailto:/))
+    expect(screen.getAllByRole('link', { name: /zhengofficially@gmail.com/i })[0]).toHaveAttribute('href', expect.stringMatching(/^mailto:/))
     const github = screen.getAllByRole('link', { name: /GitHub/ })[0]
     expect(github).toHaveAttribute('target', '_blank')
     expect(github).toHaveAttribute('rel', 'noopener noreferrer')
