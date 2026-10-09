@@ -1,0 +1,11 @@
+# Never upload these to Vercel
+node_modules
+dist
+.git
+.claude
+design
+photo-originals
+audio-originals
+private-demos/*.wav
+.env
+.env.*

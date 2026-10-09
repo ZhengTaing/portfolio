@@ -86,22 +86,20 @@ Anyone with the password can still record what they hear, so share it only with 
 
 Add `public/resume.pdf` and set `resumeUrl: '/resume.pdf'` in `profile.ts`. Until then, the About page offers a "Request resume by email" button.
 
-## Deployment
+## Deployment (Vercel)
 
-### GitHub Pages (static)
+The code lives on GitHub; the live site is deployed to Vercel from this computer:
 
-`.github/workflows/deploy-pages.yml` builds, tests and publishes the site on every push to `main`.
-Name the repository `<username>.github.io` (e.g. `ZhengTaing.github.io`) so the site is served from the root,
-then in the repo go to **Settings → Pages → Source: GitHub Actions**.
+```bash
+npm run deploy      # runs the tests, builds, then publishes to Vercel (production)
+```
 
-GitHub Pages can't run server code, so the password-protected **Unreleased** demos page shows
-"not available" there. Everything else works.
+Deploying from this computer (not from GitHub) is deliberate: it uploads the private demo
+audio in `private-demos/` straight to Vercel, so it never goes to GitHub. `.vercelignore`
+keeps the WAV masters, photo originals and screenshots out of the upload.
 
-### Vercel (everything, including the demo password)
-
-Import the GitHub repo in Vercel (preset: Vite). Add `DEMOS_PASSWORD` and `DEMOS_SESSION_SECRET`
-under Settings → Environment Variables. The demo audio in `private-demos/` is **not** in git;
-deploy it from your computer with the Vercel CLI (`npx vercel --prod`) so it never goes to GitHub.
+The demo password lives in Vercel → Project → Settings → Environment Variables
+(`DEMOS_PASSWORD`, `DEMOS_SESSION_SECRET`). Change it there and redeploy.
 `vercel.json` adds the single-page-app rewrite, caching and security headers.
 
 ## Pre-launch checklist
