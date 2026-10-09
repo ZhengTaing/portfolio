@@ -36,3 +36,4 @@ photo-originals/
 # Private demos never go to GitHub (deploy them with the Vercel CLI or keep the repo private)
 private-demos/*
 !private-demos/README.md
+.vercel
