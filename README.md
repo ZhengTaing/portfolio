@@ -86,13 +86,23 @@ Anyone with the password can still record what they hear, so share it only with 
 
 Add `public/resume.pdf` and set `resumeUrl: '/resume.pdf'` in `profile.ts`. Until then, the About page offers a "Request resume by email" button.
 
-## Deployment (Vercel)
+## Deployment
 
-1. Push this folder to a GitHub repository.
-2. Import it in Vercel. The framework preset is Vite; the build command is `npm run build` and the output directory is `dist`.
-3. Set the real domain in `SITE_URL` (`src/lib/site.ts`) and in `index.html`'s `og:image`. The sitemap, canonical URLs and social tags use it.
+### GitHub Pages (static)
 
-`vercel.json` adds the single-page-app rewrite, long-lived caching for hashed assets and basic security headers. HTTPS is automatic on Vercel.
+`.github/workflows/deploy-pages.yml` builds, tests and publishes the site on every push to `main`.
+Name the repository `<username>.github.io` (e.g. `ZhengTaing.github.io`) so the site is served from the root,
+then in the repo go to **Settings → Pages → Source: GitHub Actions**.
+
+GitHub Pages can't run server code, so the password-protected **Unreleased** demos page shows
+"not available" there. Everything else works.
+
+### Vercel (everything, including the demo password)
+
+Import the GitHub repo in Vercel (preset: Vite). Add `DEMOS_PASSWORD` and `DEMOS_SESSION_SECRET`
+under Settings → Environment Variables. The demo audio in `private-demos/` is **not** in git;
+deploy it from your computer with the Vercel CLI (`npx vercel --prod`) so it never goes to GitHub.
+`vercel.json` adds the single-page-app rewrite, caching and security headers.
 
 ## Pre-launch checklist
 

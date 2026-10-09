@@ -21,5 +21,6 @@ export function themeForPath(pathname: string): RoomTheme {
   return navItems.find((n) => n.path === section)?.theme ?? 'paper'
 }
 
-export const SITE_URL = 'https://zhengtaing.com' // PLACEHOLDER: set to the production domain
+/** Public address of the site (used for canonical links, sharing tags and the sitemap). */
+export const SITE_URL = 'https://zhengtaing.github.io'
 export const SITE_NAME = 'Zheng Taing'

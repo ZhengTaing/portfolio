@@ -7,7 +7,9 @@ import { resolve } from 'node:path'
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 import { projects } from './src/content/projects'
 import { releases } from './src/content/releases'
-import { SITE_URL } from './src/lib/site'
+import { SITE_URL as DEFAULT_SITE_URL } from './src/lib/site'
+
+const SITE_URL = process.env.SITE_URL || DEFAULT_SITE_URL
 
 /** Emits sitemap.xml and robots.txt from the content data at build time. */
 function seoFiles(): Plugin {
