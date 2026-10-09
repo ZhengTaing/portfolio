@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { themeForPath } from '../lib/site'
+import { useScrollReveal } from '../lib/useScrollReveal'
 import { Footer } from './Footer'
 import { Navigation } from './Navigation'
 
@@ -22,6 +23,8 @@ export function SiteLayout() {
   const theme = themeForPath(pathname)
   const mainRef = useRef<HTMLElement>(null)
   const firstRender = useRef(true)
+  const shellRef = useRef<HTMLDivElement>(null)
+  useScrollReveal(shellRef)
 
   // Each section is its own "room": apply its palette to the whole document
   // so overscroll areas match too.
@@ -45,10 +48,10 @@ export function SiteLayout() {
         Skip to content
       </a>
       <SideRail />
-      <div className="relative md:pl-14">
+      <div ref={shellRef} className="relative md:pl-14">
         <Navigation overlay={pathname === '/'} />
         <main id="main" ref={mainRef} tabIndex={-1} className="outline-none">
-          <div key={pathname} className="motion-safe:animate-[rise_.5s_ease-out_both]">
+          <div key={pathname} className="motion-safe:animate-[fade_.45s_ease-out_both]">
             <Outlet />
           </div>
         </main>

@@ -127,12 +127,19 @@
     text-decoration: underline;
     text-decoration-thickness: 1px;
     text-underline-offset: 4px;
+    transition:
+      text-underline-offset 0.25s ease,
+      text-decoration-thickness 0.25s ease;
   }
   .link-underline:hover {
     text-decoration-thickness: 2px;
+    text-underline-offset: 6px;
   }
   .btn-outline {
     @apply inline-flex items-center justify-center gap-2 border-2 border-current px-4 py-3 font-bold uppercase transition-colors;
+  }
+  .btn-outline:active {
+    transform: scale(0.98);
   }
   .btn-outline:hover {
     background: var(--room-fg);
@@ -149,6 +156,11 @@
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+  [data-reveal],
+  [data-reveal-item] {
+    opacity: 1 !important;
+    transform: none !important;
   }
   *,
   *::before,
@@ -202,6 +214,61 @@
   }
   to {
     transform: scaleY(1);
+  }
+}
+
+/* ---- Motion ----------------------------------------------------------------
+   Scroll reveal (see lib/useScrollReveal.ts). Content is only hidden once the
+   script has confirmed motion is allowed (.reveal-ready on <html>). */
+[data-reveal],
+[data-reveal-item] {
+  transition:
+    opacity 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) var(--reveal-delay, 0ms),
+    transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) var(--reveal-delay, 0ms);
+}
+.reveal-ready [data-reveal]:not(.is-revealed),
+.reveal-ready [data-reveal-item]:not(.is-revealed) {
+  opacity: 0;
+  transform: translateY(1.75rem);
+}
+
+/* Hero headline: each line slides up from behind a mask. */
+.line-mask {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.06em;
+}
+.line-mask > span {
+  display: block;
+  animation: line-up 1s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: var(--line-delay, 0ms);
+}
+@keyframes line-up {
+  from {
+    transform: translateY(105%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+/* Slow settle on the hero photo. */
+@keyframes ken-burns {
+  from {
+    transform: scale(1.08);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes nudge {
+  0%,
+  100% {
+    transform: none;
+  }
+  50% {
+    transform: translateY(4px);
   }
 }
 

@@ -53,7 +53,7 @@ export default function AboutPage() {
         <PortraitSheet photos={profile.portraits} />
       </div>
 
-      <section aria-label="Contact" className="border-line mt-12 grid gap-10 border-t pt-10 lg:grid-cols-[1.3fr_1fr]">
+      <section aria-label="Contact" data-reveal className="border-line mt-12 grid gap-10 border-t pt-10 lg:grid-cols-[1.3fr_1fr]">
         <div>
           <p className="label mb-3">Email</p>
           <a
@@ -78,7 +78,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <div className="mt-20 grid gap-14 lg:grid-cols-[1.3fr_1fr]">
+      <div data-reveal className="mt-20 grid gap-14 lg:grid-cols-[1.3fr_1fr]">
         <section>
           <div className="flex items-start justify-between gap-4">
             <Stamp>Biography</Stamp>
@@ -96,7 +96,7 @@ export default function AboutPage() {
         </section>
       </div>
 
-      <div className="mt-20 grid gap-14 lg:grid-cols-2">
+      <div data-reveal className="mt-20 grid gap-14 lg:grid-cols-2">
         <section>
           <Stamp>Experience</Stamp>
           <Timeline entries={profile.experience} />

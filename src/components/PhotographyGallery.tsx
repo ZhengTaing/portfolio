@@ -30,7 +30,7 @@ export function PhotographyGallery({ items, openId, onOpenChange }: Props) {
 
   return (
     <>
-      <ul className="columns-1 gap-4 xs:columns-2 lg:columns-3">
+      <ul data-reveal-stagger className="columns-1 gap-4 xs:columns-2 lg:columns-3">
         {items.map((a, i) => (
           <li key={a.id} className="mb-4 break-inside-avoid">
             <button

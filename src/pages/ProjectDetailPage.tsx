@@ -7,7 +7,7 @@ import NotFoundPage from './NotFoundPage'
 
 function Block({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="border-line grid gap-4 border-t py-8 md:grid-cols-[14rem_1fr] md:gap-10">
+    <section data-reveal className="border-line grid gap-4 border-t py-8 md:grid-cols-[14rem_1fr] md:gap-10">
       <h2 className="label pt-1">{title}</h2>
       <div className="max-w-[68ch] text-[0.9375rem] leading-relaxed">{children}</div>
     </section>
@@ -71,7 +71,7 @@ export default function ProjectDetailPage() {
         </div>
       </header>
 
-      <figure className="bg-surface my-10">
+      <figure data-reveal className="bg-surface my-10">
         <SmartImage image={project.thumbnail} eager sizes="100vw" />
       </figure>
 

@@ -62,7 +62,7 @@ export default function ProjectsPage() {
       </p>
 
       {visible.length > 0 ? (
-        <ul className="grid gap-x-6 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
+        <ul data-reveal-stagger className="grid gap-x-6 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
           {visible.map((p) => (
             <li key={p.id} className="flex">
               <ProjectCard project={p} />

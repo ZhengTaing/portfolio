@@ -66,7 +66,7 @@ export default function MusicPage() {
         )}
       </div>
 
-      <section aria-labelledby="listen-title" data-theme="ink" className="bg-bg text-fg relative z-10 mt-16 p-5 sm:p-8">
+      <section aria-labelledby="listen-title" data-reveal data-theme="ink" className="bg-bg text-fg relative z-10 mt-16 p-5 sm:p-8">
         <h2 id="listen-title" className="label text-accent mb-5">
           Listen
         </h2>
@@ -94,7 +94,7 @@ export default function MusicPage() {
           </h2>
         </div>
         <h3 className="label mb-4">My releases · Artist</h3>
-        <ul className="grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 lg:grid-cols-4">
+        <ul data-reveal-stagger className="grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 lg:grid-cols-4">
           {[...released, ...upcoming]
             .filter((r) => r.format !== 'writing')
             .map((r) => (
@@ -111,7 +111,7 @@ export default function MusicPage() {
                 <PlaceholderNotice>Links pending</PlaceholderNotice>
               )}
             </div>
-            <ul className="grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 lg:grid-cols-4">
+            <ul data-reveal-stagger className="grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 lg:grid-cols-4">
               {released
                 .filter((r) => r.format === 'writing')
                 .map((r) => (
@@ -124,7 +124,7 @@ export default function MusicPage() {
         )}
       </section>
 
-      <section aria-labelledby="unreleased-title" className="relative z-10 mt-20">
+      <section aria-labelledby="unreleased-title" data-reveal className="relative z-10 mt-20">
         <div className="border-fg mb-8 border-b-2 pb-3">
           <h2 id="unreleased-title" className="display text-4xl sm:text-5xl">
             Unreleased
@@ -150,7 +150,7 @@ export default function MusicPage() {
         </Link>
       </section>
 
-      <section aria-labelledby="credits-title" className="relative z-10 mt-20">
+      <section aria-labelledby="credits-title" data-reveal className="relative z-10 mt-20">
         <div className="border-fg mb-4 border-b-2 pb-3">
           <h2 id="credits-title" className="display text-4xl sm:text-5xl">
             Credits

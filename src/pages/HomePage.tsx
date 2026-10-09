@@ -30,7 +30,7 @@ export default function HomePage() {
 
       <section data-theme="ink" aria-labelledby="home-work" className="bg-bg text-fg px-4 py-20 sm:px-8 md:py-28">
         <SectionHeader number="01" title={<span id="home-work">Selected Works</span>} />
-        <div>
+        <div data-reveal-stagger>
           {projects.map((p) => (
             <ProjectRow key={p.id} project={p} />
           ))}
@@ -48,7 +48,7 @@ export default function HomePage() {
         <div className="text-white">
           <SectionHeader number="02" title={<span id="home-sound">Sonic Structures</span>} />
         </div>
-        <div className="relative z-10 grid gap-10 lg:grid-cols-[1fr_1.4fr] lg:gap-12">
+        <div data-reveal className="relative z-10 grid gap-10 lg:grid-cols-[1fr_1.4fr] lg:gap-12">
           <div>
             <p className="font-display mb-10 text-[clamp(1.375rem,2.4vw,2.125rem)] leading-tight font-semibold tracking-[-0.01em]">
               Singer-songwriter, releasing my own music and writing songs for other artists.
@@ -74,7 +74,9 @@ export default function HomePage() {
           title={<span id="home-lens">Visual Art</span>}
           aside="Painting, life drawing, observational drawing and 3D environments."
         />
-        <ArtCarousel items={artworks} />
+        <div data-reveal>
+          <ArtCarousel items={artworks} />
+        </div>
         <Link to="/visual-art" className="btn-outline mt-10">
           View visual art <span aria-hidden="true">→</span>
         </Link>

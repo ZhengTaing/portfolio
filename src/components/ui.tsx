@@ -95,7 +95,7 @@ export function SectionHeader({
   aside?: ReactNode
 }) {
   return (
-    <header className="mb-10 flex flex-col gap-6 border-b-[3px] border-current pb-6 md:mb-14 md:flex-row md:items-end md:justify-between">
+    <header data-reveal className="mb-10 flex flex-col gap-6 border-b-[3px] border-current pb-6 md:mb-14 md:flex-row md:items-end md:justify-between">
       <div className="flex items-baseline gap-3">
         <span className="text-fg text-sm" aria-hidden="true">
           {number}
