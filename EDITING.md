@@ -91,11 +91,38 @@ To find a photo's width and height on a Mac, open it in Preview and choose **Too
    The music player shows it right away.
 3. Add Spotify and Apple Music links under `platformLinks` so people can also stream it there.
 
-### Add a secret demo
+### Edit an Unreleased demo (pitch info and cover)
 
-1. Put the audio file (MP3, M4A or WAV) in the `private-demos/` folder, named how you want it shown, e.g. `New Song (v1).mp3`.
-2. In the terminal, run `npm run demos`. It updates the list and makes WAVs stream faster.
-3. To change the password, open `.env.local` and edit the `DEMOS_PASSWORD=` line, then restart `npm run dev`.
+Everything for the password page lives in the `private-demos/` folder (it never goes to GitHub).
+
+**Change the info:** open `private-demos/demos.json`, find the song by its `"title"`, and edit the values:
+
+```json
+"title": "Moonlight",
+"targetArtists": ["TXT", "NCT DREAM", "SEVENTEEN"],
+"market": ["K-pop"],
+"actType": ["Boy group"],
+"genre": ["Pop"],
+"key": "D major",
+"bpm": 123,
+"status": "available",
+"pitchNotes": "One or two sentences shown on the card.",
+```
+
+- `status` is one of `available`, `on-hold`, `reserved`, `placed`.
+  For `on-hold` add `"holdUntil": "2026-11-30",`; for `placed` add `"placedWith": "Artist name",`.
+- Market, act type and genre must be spelled like the filter buttons (e.g. `"Dance pop"`, `"Girl group"`).
+- `"privateNotes"` and `"reservation"` are for you only; visitors never see them.
+
+**Change a cover:** save the image (JPG or PNG) into `private-demos/covers/`, named after the song's `"id"`
+(e.g. `moonlight-ai-demo.jpg`), replacing the old one. For a brand-new cover file, also set
+`"cover": "covers/your-file.jpg",` on that song.
+
+**Add a new demo:** drop the audio into `private-demos/`, run `npm run demos`, then fill in its fields.
+
+**See it locally:** `npm run dev` → http://localhost:5173/music/unreleased (refresh after saving).
+
+**Publish it:** `npm run deploy` (or just ask Claude to deploy).
 
 ### Songs and credits
 
