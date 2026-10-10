@@ -66,14 +66,26 @@ export default function MusicPage() {
         )}
       </div>
 
-      <section aria-labelledby="listen-title" data-reveal data-theme="ink" className="bg-bg text-fg relative z-10 mt-16 p-5 sm:p-8">
-        <h2 id="listen-title" className="label text-accent mb-5">
-          Listen
-        </h2>
+      <section
+        aria-labelledby="listen-title"
+        data-reveal
+        data-theme="ink"
+        className="bg-bg text-fg relative isolate z-10 mt-16 overflow-hidden"
+      >
         {tracks.length > 0 ? (
-          <MediaPlayer tracks={tracks} listLabel="Released songs" />
+          <MediaPlayer
+            tracks={tracks}
+            listLabel="Released songs"
+            variant="showcase"
+            heading={
+              <h2 id="listen-title" className="label text-accent mb-5">
+                Listen
+              </h2>
+            }
+          />
         ) : (
-          <p className="max-w-xl text-[0.9375rem] leading-relaxed">
+          <p className="max-w-xl p-5 text-[0.9375rem] leading-relaxed sm:p-8">
+            <span id="listen-title" className="sr-only">Listen</span>
             Full songs are coming to this player soon. Until then, listen on{' '}
             <ExternalLink href={artistLinks.spotify} className="link-underline">
               Spotify
