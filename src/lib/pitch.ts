@@ -32,7 +32,24 @@ export const statuses: { id: PitchStatus; label: string; color: string }[] = [
 /** Filter options. The values are exactly what to type in private-demos/demos.json. */
 export const markets = ['K-pop', 'Western pop']
 export const actTypes = ['Girl group', 'Boy group', 'Solo artist']
-export const genres = ['Pop', 'Dance pop', 'Alt pop', 'Dark pop', 'R&B', 'Ballad', 'Pop ballad', 'EDM', 'Synth pop', 'Jersey club', 'Rap', 'Folk']
+export const genres = [
+  'Pop',
+  'Dance pop',
+  'Alt pop',
+  'Dark pop',
+  'R&B',
+  'Ballad',
+  'Pop ballad',
+  'Acoustic',
+  'EDM',
+  'Synth pop',
+  'City pop',
+  'Jersey club',
+  'Rap',
+  'Folk',
+  'Country',
+  'Bossa nova',
+]
 
 export interface PitchFilters {
   status: PitchStatus[]

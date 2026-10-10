@@ -20,7 +20,7 @@ password-checked `/api/demos` functions on Vercel.
   "targetArtists": ["Artist A", "Artist B"],   // who you're pitching to ([] = "Open pitch")
   "market": ["K-pop", "Western pop"],          // K-pop | Western pop (one or more)
   "actType": ["Girl group"],                   // Girl group | Boy group | Solo artist (one or more)
-  "genre": ["Dance pop", "EDM"],               // Pop | Dance pop | Alt pop | Dark pop | R&B | Ballad | Pop ballad | EDM | Synth pop | Jersey club | Rap | Folk
+  "genre": ["Dance pop", "EDM"],               // Pop | Dance pop | Alt pop | Dark pop | R&B | Ballad | Pop ballad | Acoustic | EDM | Synth pop | City pop | Jersey club | Rap | Folk | Country | Bossa nova
   "key": "D major",
   "bpm": 118,
   "status": "available",                       // available | on-hold | reserved | placed
