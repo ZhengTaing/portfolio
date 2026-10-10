@@ -261,7 +261,6 @@ export function PitchBoard({ pitches, toolbarStart }: { pitches: Pitch[]; toolba
         <FilterMenu filters={filters} setFilters={setFilters} pitches={pitches} resultCount={visible.length} />
       </div>
 
-      <audio {...p.audioProps} />
 
       {track && (
         <section

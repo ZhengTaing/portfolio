@@ -65,7 +65,6 @@ function CompactPlayer({ tracks, listLabel = 'Tracks', hideList = false, inline 
 
   return (
     <div>
-      <audio {...p.audioProps} />
 
       {/* Now playing */}
       <section
@@ -264,7 +263,6 @@ function ShowcasePlayer({ tracks, listLabel = 'Tracks', heading, backdrop = true
       style={{ '--room-accent': accent, '--room-line': 'rgb(255 255 255 / 0.16)' } as CSSProperties}
     >
       {backdrop && <CoverBackdrop track={track} />}
-      <audio {...p.audioProps} />
       {heading}
       <div aria-label="Player" role="region" className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,21rem)] lg:items-end lg:gap-10">
         <div className="grid grid-cols-[5.5rem_1fr] items-center gap-4 sm:grid-cols-[8rem_1fr] sm:gap-6 lg:grid-cols-[15rem_1fr] lg:items-end lg:gap-8 xl:grid-cols-[19rem_1fr]">

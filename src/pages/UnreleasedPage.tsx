@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { PitchBoard } from '../components/PitchBoard'
 import type { Pitch } from '../lib/pitch'
+import { usePlayer } from '../lib/player'
 import { usePageMeta } from '../lib/usePageMeta'
 
 type Demo = Pitch
@@ -33,6 +34,7 @@ export default function UnreleasedPage() {
   const [state, setState] = useState<State>({ kind: 'checking' })
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const player = usePlayer()
 
   // Keep this page out of search results.
   useEffect(() => {
@@ -78,6 +80,8 @@ export default function UnreleasedPage() {
   }
 
   async function lock() {
+    // Demos need the password, so stop one if it's playing.
+    if (player.current?.audioUrl.startsWith('/api/demos')) player.stop()
     await fetch('/api/demos/logout', { method: 'POST', credentials: 'same-origin' }).catch(() => {})
     setState({ kind: 'locked' })
   }

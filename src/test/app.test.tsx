@@ -262,6 +262,9 @@ describe('unreleased demos', () => {
     expect(screen.getByRole('button', { name: 'Play Secret Song' })).toBeInTheDocument()
     expect(screen.getByRole('list', { name: 'Playlist' })).toBeInTheDocument()
     expect(screen.getByRole('slider', { name: 'Seek' })).toBeInTheDocument()
+    vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {})
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.resolve())
+    await user.click(screen.getByRole('button', { name: 'Play Secret Song' }))
     expect(document.querySelector('audio')).toHaveAttribute('src', '/api/demos/audio?id=d1')
 
     // Filters narrow both the cards and the playlist.
@@ -274,28 +277,59 @@ describe('unreleased demos', () => {
   })
 })
 
-describe('demo player', () => {
+describe('site-wide player', () => {
+  beforeEach(() => {
+    vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {})
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(function (this: HTMLMediaElement) {
+      this.dispatchEvent(new Event('play'))
+      return Promise.resolve()
+    })
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(function (this: HTMLMediaElement) {
+      this.dispatchEvent(new Event('pause'))
+    })
+  })
+  afterEach(() => vi.restoreAllMocks())
+
   it('switches tracks from the tracklist and the next button', async () => {
     const { MediaPlayer } = await import('../components/MediaPlayer')
-    vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {})
-    vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.resolve())
-    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
+    const { PlayerProvider } = await import('../lib/player')
     const user = userEvent.setup()
     render(
-      <MediaPlayer
-        tracks={[
-          { id: 'a', title: 'First', audioUrl: '/a' },
-          { id: 'b', title: 'Second', audioUrl: '/b' },
-        ]}
-      />,
+      <MemoryRouter>
+        <PlayerProvider>
+          <MediaPlayer
+            tracks={[
+              { id: 'a', title: 'First', audioUrl: '/a' },
+              { id: 'b', title: 'Second', audioUrl: '/b' },
+            ]}
+          />
+        </PlayerProvider>
+      </MemoryRouter>,
     )
     expect(screen.getByRole('heading', { name: 'First' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Next track' }))
     expect(screen.getByRole('heading', { name: 'Second' })).toBeInTheDocument()
-    expect(document.querySelector('audio')).toHaveAttribute('src', '/b')
     expect(screen.getByRole('button', { name: 'Next track' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: /^Play$/ }))
+    expect(document.querySelector('audio')).toHaveAttribute('src', '/b')
     await user.click(screen.getByRole('button', { name: 'Play First' }))
     expect(screen.getByRole('heading', { name: 'First' })).toBeInTheDocument()
-    vi.restoreAllMocks()
+    expect(document.querySelector('audio')).toHaveAttribute('src', '/a')
+  })
+
+  it('keeps playing in the now-playing bar after leaving the page', async () => {
+    const user = userEvent.setup()
+    renderAt('/music')
+    const listen = await screen.findByRole('region', { name: 'Player' })
+    await user.click(within(listen).getByRole('button', { name: 'Play' }))
+    const bar = await screen.findByRole('region', { name: 'Now playing' })
+    const title = within(bar).getByRole('link').textContent
+    await user.click(screen.getAllByRole('link', { name: /Projects/ })[0])
+    expect(await screen.findByRole('heading', { level: 1, name: /Selected Works/ })).toBeInTheDocument()
+    const stillThere = screen.getByRole('region', { name: 'Now playing' })
+    expect(within(stillThere).getByRole('link')).toHaveTextContent(title!)
+    expect(within(stillThere).getByRole('button', { name: 'Pause' })).toBeInTheDocument()
+    await user.click(within(stillThere).getAllByRole('button', { name: 'Close player' })[0])
+    expect(screen.queryByRole('region', { name: 'Now playing' })).not.toBeInTheDocument()
   })
 })

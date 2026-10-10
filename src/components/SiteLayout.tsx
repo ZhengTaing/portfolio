@@ -1,9 +1,17 @@
 import { useEffect, useRef } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
+import { PlayerProvider, usePlayer } from '../lib/player'
 import { themeForPath } from '../lib/site'
 import { useScrollReveal } from '../lib/useScrollReveal'
 import { Footer } from './Footer'
 import { Navigation } from './Navigation'
+import { NowPlayingBar } from './NowPlayingBar'
+
+/** Leaves room under the footer so the now-playing bar never covers it. */
+function PlayerSpacer() {
+  const { current } = usePlayer()
+  return current ? <div aria-hidden="true" className="h-[4.5rem] bg-[#0b0b0b]" /> : null
+}
 
 function SideRail() {
   return (
@@ -43,6 +51,7 @@ export function SiteLayout() {
   }, [pathname])
 
   return (
+    <PlayerProvider>
     <div data-theme={theme} className="bg-bg text-fg min-h-screen transition-colors duration-300">
       <a href="#main" className="skip-link label">
         Skip to content
@@ -56,7 +65,10 @@ export function SiteLayout() {
           </div>
         </main>
         <Footer />
+        <PlayerSpacer />
       </div>
+      <NowPlayingBar />
     </div>
+    </PlayerProvider>
   )
 }

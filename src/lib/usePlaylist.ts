@@ -1,155 +1,70 @@
-import { useEffect, useRef, useState, type AudioHTMLAttributes, type RefObject } from 'react'
+import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
+import { usePlayer, type PlaylistTrack } from './player'
 
-export interface PlaylistTrack {
-  id: string
-  audioUrl: string
-}
+export type { PlaylistTrack } from './player'
 
 /**
- * Shared audio logic for the media players: one <audio> element playing
- * through a list of tracks. The current track is remembered by id, so the list
- * can change (e.g. when filters change) without interrupting what's playing;
- * next / previous then move through the new list.
+ * A page's view of the site-wide player for one list of tracks.
+ *
+ * Until something from this list is played, the first track is shown "cued"
+ * (paused). Pressing play hands the list to the global player, which keeps
+ * going while the visitor browses other pages. If the list changes while it's
+ * the active queue (e.g. filters), the queue is updated without interrupting.
  */
 export function usePlaylist<T extends PlaylistTrack>(tracks: T[]) {
-  const audioRef = useRef<HTMLAudioElement>(null) as RefObject<HTMLAudioElement>
-  const [currentId, setCurrentId] = useState<string | null>(tracks[0]?.id ?? null)
-  const [current, setCurrent] = useState<T | undefined>(tracks[0])
-  const [playing, setPlaying] = useState(false)
-  const [time, setTime] = useState(0)
-  const [duration, setDuration] = useState(0)
-  const [volume, setVolume] = useState(1)
-  const [error, setError] = useState(false)
-  const [shuffle, setShuffle] = useState(false)
-  const autoplay = useRef(false)
+  const player = usePlayer()
+  const { pathname } = useLocation()
+  const [cuedId, setCuedId] = useState<string | undefined>(tracks[0]?.id)
 
-  // If nothing has been chosen yet (or the list was empty), start at the top.
-  if (current === undefined && tracks[0]) {
-    setCurrent(tracks[0])
-    setCurrentId(tracks[0].id)
-  }
+  const ids = tracks.map((t) => t.id).join('|')
+  const active = Boolean(player.current && tracks.some((t) => t.id === player.current!.id))
+  const ownsQueue = player.queue.length > 0 && player.queue.some((q) => tracks.some((t) => t.id === q.id))
 
-  const index = tracks.findIndex((t) => t.id === currentId)
-  const track = current
-
+  // Keep the global queue in step with this list (filters) while it's playing from here.
   useEffect(() => {
-    const audio = audioRef.current
-    if (!audio || !track) return
-    setTime(0)
-    setDuration(0)
-    setError(false)
-    audio.load()
-    if (autoplay.current) audio.play().catch(() => setPlaying(false))
-    // Only reload when the audio file itself changes.
+    if (ownsQueue && player.queue.map((t) => t.id).join('|') !== ids) player.setQueue(tracks)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [track?.audioUrl])
+  }, [ids, ownsQueue])
 
-  useEffect(() => {
-    if (audioRef.current) audioRef.current.volume = volume
-  }, [volume])
+  const cued = tracks.find((t) => t.id === cuedId) ?? tracks[0]
+  const track = (active ? (player.current as T) : cued) as T | undefined
+  const index = track ? tracks.findIndex((t) => t.id === track.id) : -1
 
-  function choose(t: T, play: boolean) {
-    autoplay.current = play
-    setCurrent(t)
-    setCurrentId(t.id)
-  }
-
-  function toggle() {
-    const audio = audioRef.current
-    if (!audio) return
-    if (audio.paused) {
-      autoplay.current = true
-      audio.play().catch(() => setPlaying(false))
-    } else {
-      autoplay.current = false
-      audio.pause()
-    }
-  }
-
-  /** Play (or pause, if it's already playing) a specific track. */
-  function playTrack(id: string) {
-    if (id === currentId) {
-      toggle()
+  const playTrack = (id: string) => {
+    if (active && player.current?.id === id) {
+      player.toggle()
       return
     }
-    const t = tracks.find((x) => x.id === id)
-    if (t) choose(t, true)
-  }
-
-  function nextTrack(): T | undefined {
-    if (tracks.length === 0) return undefined
-    if (shuffle && tracks.length > 1) {
-      const others = tracks.filter((t) => t.id !== currentId)
-      return others[Math.floor(Math.random() * others.length)]
-    }
-    // When the current song isn't in the list (filtered out), start from the top.
-    return index === -1 ? tracks[0] : tracks[index + 1]
-  }
-
-  const hasNext = Boolean(nextTrack()) && tracks.length > 0 && (shuffle || index < tracks.length - 1)
-  const hasPrev = index > 0
-
-  function next() {
-    const t = nextTrack()
-    if (t) choose(t, playing)
-  }
-
-  function prev() {
-    const audio = audioRef.current
-    // Like most players: restart the song first, then go back.
-    if (audio && audio.currentTime > 3) {
-      audio.currentTime = 0
-      return
-    }
-    if (hasPrev) choose(tracks[index - 1], playing)
-  }
-
-  function seek(value: number) {
-    const audio = audioRef.current
-    if (!audio) return
-    audio.currentTime = value
-    setTime(value)
-  }
-
-  const audioProps: AudioHTMLAttributes<HTMLAudioElement> & { ref: RefObject<HTMLAudioElement> } = {
-    ref: audioRef,
-    src: track?.audioUrl,
-    preload: 'metadata',
-    onPlay: () => setPlaying(true),
-    onPause: () => setPlaying(false),
-    onTimeUpdate: (e) => setTime(e.currentTarget.currentTime),
-    onLoadedMetadata: (e) => setDuration(e.currentTarget.duration),
-    onDurationChange: (e) => setDuration(e.currentTarget.duration),
-    onError: () => {
-      setError(true)
-      setPlaying(false)
-    },
-    onEnded: () => {
-      const t = nextTrack()
-      if (t && (shuffle || index < tracks.length - 1)) choose(t, true)
-      else setPlaying(false)
-    },
+    setCuedId(id)
+    player.play(tracks, id, pathname)
   }
 
   return {
-    audioProps,
     track,
     index,
-    playing,
-    time,
-    duration,
-    volume,
-    setVolume,
-    error,
-    shuffle,
-    setShuffle,
-    hasNext,
-    hasPrev,
-    toggle,
+    active,
+    playing: active && player.playing,
+    time: active ? player.time : 0,
+    duration: active ? player.duration : 0,
+    volume: player.volume,
+    setVolume: player.setVolume,
+    error: active && player.error,
+    shuffle: player.shuffle,
+    setShuffle: player.setShuffle,
+    hasNext: active ? player.hasNext : index < tracks.length - 1,
+    hasPrev: active ? player.hasPrev : index > 0,
+    toggle: () => (active ? player.toggle() : track && playTrack(track.id)),
     playTrack,
-    next,
-    prev,
-    seek,
+    next: () => {
+      if (active) player.next()
+      else if (index < tracks.length - 1) setCuedId(tracks[index + 1].id)
+    },
+    prev: () => {
+      if (active) player.prev()
+      else if (index > 0) setCuedId(tracks[index - 1].id)
+    },
+    seek: (s: number) => active && player.seek(s),
   }
 }
 
