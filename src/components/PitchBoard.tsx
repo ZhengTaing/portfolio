@@ -12,6 +12,7 @@ import {
   type Pitch,
   type PitchFilters,
 } from '../lib/pitch'
+import { useCoverColor } from '../lib/useCoverColor'
 import { formatTime, usePlaylist } from '../lib/usePlaylist'
 
 function Cover({ pitch, className = '' }: { pitch: Pitch; className?: string }) {
@@ -209,6 +210,37 @@ function FilterMenu({
 }
 
 /**
+ * Full-page backdrop: a heavily blurred copy of the current song's cover that
+ * cross-fades when the song changes. Fixed to the viewport; the page wrapper
+ * clips it (clip-path) so it never spills over the site header or footer.
+ */
+function Backdrop({ pitch }: { pitch?: Pitch }) {
+  const key = pitch?.id ?? 'none'
+  const [layers, setLayers] = useState<Pitch[]>(pitch ? [pitch] : [])
+  if (pitch && layers[layers.length - 1]?.id !== pitch.id) {
+    // Keep the previous cover underneath while the new one fades in.
+    setLayers((l) => [...l.slice(-1), pitch])
+  }
+  return (
+    <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[#0e0e0e]" data-backdrop={key}>
+      {layers.map((l, i) => (
+        <div
+          key={l.id + i}
+          className={`absolute -inset-24 scale-110 blur-[70px] brightness-[0.55] saturate-[1.4] ${i === layers.length - 1 ? 'motion-safe:animate-[fade_1.2s_ease-out_both]' : ''}`}
+          style={
+            l.coverUrl
+              ? { backgroundImage: `url("${l.coverUrl}")`, backgroundSize: 'cover', backgroundPosition: 'center' }
+              : { background: generatedCover(l.id) }
+          }
+        />
+      ))}
+      {/* Darken toward the bottom so cards and text stay readable. */}
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgb(0_0_0/0.1)_0%,rgb(0_0_0/0.55)_55%,rgb(0_0_0/0.85)_100%)]" />
+    </div>
+  )
+}
+
+/**
  * Song-pitch board for the private demos: filter menu, a player with the
  * current playlist beside it, and horizontal pitch cards that feed the player.
  */
@@ -219,9 +251,11 @@ export function PitchBoard({ pitches, toolbarStart }: { pitches: Pitch[]; toolba
   const { track } = p
   const progress = p.duration ? (p.time / p.duration) * 100 : 0
   const queue = visible
+  const accent = useCoverColor(track?.coverUrl)
 
   return (
-    <div>
+    <div style={{ '--room-accent': accent, '--room-line': 'rgb(255 255 255 / 0.16)' } as CSSProperties}>
+      <Backdrop pitch={track} />
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>{toolbarStart}</div>
         <FilterMenu filters={filters} setFilters={setFilters} pitches={pitches} resultCount={visible.length} />
@@ -232,12 +266,12 @@ export function PitchBoard({ pitches, toolbarStart }: { pitches: Pitch[]; toolba
       {track && (
         <section
           aria-label="Player"
-          className="border-fg relative z-20 mb-8 grid border-2 bg-[#141414] lg:grid-cols-[1.15fr_1fr]"
+          className="relative z-20 mb-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(17rem,22rem)] lg:items-end lg:gap-10"
         >
           {/* Now playing */}
-          <div className="border-line grid grid-cols-[4.5rem_1fr] items-center gap-4 p-4 sm:grid-cols-[6rem_1fr] sm:gap-5 sm:p-5 lg:border-r">
-            <div className="size-[4.5rem] overflow-hidden sm:size-24">
-              <Cover pitch={track} />
+          <div className="grid grid-cols-[5.5rem_1fr] items-center gap-4 sm:grid-cols-[8rem_1fr] sm:gap-6 xl:grid-cols-[22rem_1fr] xl:items-end xl:gap-10 lg:grid-cols-[17rem_1fr] lg:items-end lg:gap-8">
+            <div className="aspect-square w-full overflow-hidden shadow-[0_30px_80px_rgb(0_0_0/0.65)]">
+              <Cover key={track.id} pitch={track} className="motion-safe:animate-[fade_.6s_ease-out_both]" />
             </div>
             <div className="min-w-0">
               <p className="label text-accent flex flex-wrap items-center gap-x-2" aria-live="polite">
@@ -248,13 +282,14 @@ export function PitchBoard({ pitches, toolbarStart }: { pitches: Pitch[]; toolba
                   </span>
                 )}
               </p>
-              <h2 className="font-display mt-1 truncate text-2xl leading-none font-extrabold tracking-[-0.02em] sm:text-[1.75rem]">
+              <h2 className="font-display mt-1 truncate text-2xl leading-none font-extrabold tracking-[-0.02em] sm:text-4xl lg:text-5xl xl:text-6xl">
                 {track.title}
               </h2>
-              <p className="label text-muted mt-1 truncate">
+              <p className="label mt-2 truncate text-white/80">
                 Demo: {track.demoArtist || 'Zheng Taing'}
                 {track.targetArtists?.length ? ` · For → ${track.targetArtists.join(', ')}` : ''}
               </p>
+              {metaLine(track) && <p className="label mt-1 hidden truncate text-white/60 sm:block">{metaLine(track)}</p>}
               {p.error && (
                 <p role="alert" className="text-accent mt-1 text-sm">
                   This demo could not be loaded right now.
@@ -315,7 +350,7 @@ export function PitchBoard({ pitches, toolbarStart }: { pitches: Pitch[]; toolba
           </div>
 
           {/* Playlist = the current filtered list */}
-          <div className="border-line max-h-[12rem] overflow-y-auto border-t py-2 sm:max-h-[15.5rem] lg:border-t-0">
+          <div className="max-h-[14rem] overflow-y-auto bg-black/35 py-2 backdrop-blur-md sm:max-h-[18rem] lg:max-h-[22rem]">
             <p className="label text-muted flex justify-between px-4 pt-1 pb-2">
               <span>Playlist{filtersSummary(filters)}</span>
               <span>
@@ -332,7 +367,7 @@ export function PitchBoard({ pitches, toolbarStart }: { pitches: Pitch[]; toolba
                       onClick={() => p.playTrack(q.id)}
                       aria-current={current ? 'true' : undefined}
                       aria-label={`${current && p.playing ? 'Pause' : 'Play'} ${q.title} from playlist`}
-                      className={`grid w-full grid-cols-[1.75rem_2.25rem_1fr_auto] items-center gap-3 px-4 py-1.5 text-left transition-colors ${current ? 'text-accent bg-[rgb(255_106_74/0.1)]' : 'hover:bg-white/5'}`}
+                      className={`grid w-full grid-cols-[1.75rem_2.25rem_1fr_auto] items-center gap-3 px-4 py-1.5 text-left transition-colors ${current ? 'text-accent bg-[color-mix(in_srgb,var(--room-accent)_16%,transparent)]' : 'hover:bg-white/5'}`}
                     >
                       <span className="label text-muted tabular-nums">
                         {current && p.playing ? <span className="text-accent">▶</span> : String(i + 1).padStart(2, '0')}
@@ -371,7 +406,7 @@ export function PitchBoard({ pitches, toolbarStart }: { pitches: Pitch[]; toolba
             return (
               <li key={pitch.id}>
                 <article
-                  className={`bg-surface relative grid h-full grid-cols-[6.5rem_1fr] border sm:grid-cols-[8.25rem_1fr] ${current ? 'border-accent outline-accent outline-1' : 'border-line'}`}
+                  className={`relative grid h-full grid-cols-[6.5rem_1fr] border bg-black/40 backdrop-blur-sm transition-colors sm:grid-cols-[8.25rem_1fr] ${current ? 'border-accent outline-accent outline-1' : 'border-white/15 hover:bg-black/55'}`}
                 >
                   <div className="relative min-h-[8.25rem]">
                     <Cover pitch={pitch} className={`absolute inset-0 ${placed ? 'brightness-[0.6] grayscale' : ''}`} />

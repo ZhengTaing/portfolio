@@ -83,7 +83,7 @@ export default function UnreleasedPage() {
   }
 
   return (
-    <div data-theme="ink" className="bg-bg text-fg min-h-[70vh] px-4 pt-12 pb-24 sm:px-8">
+    <div data-theme="ink" className="bg-bg text-fg relative isolate min-h-[70vh] px-4 pt-12 pb-24 [clip-path:inset(0)] sm:px-8">
       <nav aria-label="Breadcrumb" className="label mb-8">
         <Link to="/music" className="link-underline">
           Music
