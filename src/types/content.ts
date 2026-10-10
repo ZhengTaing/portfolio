@@ -56,6 +56,8 @@ export type MusicPlatform = 'spotify' | 'apple-music' | 'soundcloud' | 'youtube'
 export interface Credit {
   name: string
   role: string
+  /** Section heading, e.g. "Composition & Lyrics". Credits are shown grouped by it. */
+  group?: string
 }
 
 export interface MusicRelease {
