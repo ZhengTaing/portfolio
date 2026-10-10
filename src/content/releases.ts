@@ -87,6 +87,7 @@ const allReleases: MusicRelease[] = [
     artist: 'ROCKY',
     format: 'writing',
     artwork: cover('proxy', 'UNSAID by ROCKY, which includes Proxy'),
+    releaseDate: '2026-08-11',
     description: 'Co-written by Zheng Taing (composer and lyricist) for ROCKY. Released via Universal Music Ltd. Distributed Labels.',
     roles: ['Composer', 'Lyricist'],
     credits: [
@@ -121,6 +122,7 @@ const allReleases: MusicRelease[] = [
     artist: 'PRION HEART, Koa',
     format: 'writing',
     artwork: cover('karma', 'Karma by PRION HEART and Koa'),
+    releaseDate: '2026-07-10',
     description: 'Co-written by Zheng Taing (composer and lyricist) for PRION HEART and Koa. Released via Gahara.',
     roles: ['Composer', 'Lyricist'],
     credits: [
@@ -142,7 +144,7 @@ const allReleases: MusicRelease[] = [
 ]
 
 export const artistLinks = { spotify: SPOTIFY_ARTIST, appleMusic: APPLE_MUSIC_ARTIST }
-
+ 
 /** Public releases only, newest first; undated entries keep their order at the end. */
 export const publicReleases = (list: MusicRelease[]) =>
   list

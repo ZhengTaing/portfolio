@@ -119,8 +119,9 @@ describe('music', () => {
     expect(findAudioUrl(rose, ['Rose.m4a', 'romeo.mp3'])).toBe('/media/audio/Rose.m4a')
     expect(findAudioUrl(rose, ['rosey.mp3'])).toBeUndefined()
     const tracks = releaseTracks(releases, ['rose.mp3', 'karma.mp3'])
-    expect(tracks.map((t) => t.title)).toEqual(['rose', 'Karma'])
-    expect(tracks[1].subtitle).toMatch(/Written by Zheng Taing/)
+    // Order follows release dates, which change as content is edited.
+    expect(tracks.map((t) => t.title).sort()).toEqual(['Karma', 'rose'])
+    expect(tracks.find((t) => t.title === 'Karma')?.subtitle).toMatch(/Written by Zheng Taing/)
   })
 
   it('release detail shows credits and streaming links', async () => {
