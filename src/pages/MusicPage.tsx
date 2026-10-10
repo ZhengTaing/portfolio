@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
-import { MediaPlayer } from '../components/MediaPlayer'
+import { useState } from 'react'
+import { CoverBackdrop, MediaPlayer, type PlayerTrack } from '../components/MediaPlayer'
 import { PlatformLinks } from '../components/PlatformLinks'
 import { ContactLinks } from '../components/ContactLinks'
 import { MusicReleaseCard } from '../components/MusicReleaseCard'
@@ -27,9 +28,12 @@ export default function MusicPage() {
     ...released.filter((r) => r.format !== 'writing'),
     ...released.filter((r) => r.format === 'writing'),
   ])
+  // The song playing in the Listen player themes the whole page background.
+  const [current, setCurrent] = useState<PlayerTrack | undefined>(tracks[0])
 
   return (
-    <div className="relative overflow-hidden px-4 pt-12 pb-24 sm:px-8">
+    <div data-theme="ink" className="bg-bg text-fg relative isolate overflow-hidden px-4 pt-12 pb-24 [clip-path:inset(0)] sm:px-8">
+      <CoverBackdrop track={current} fixed />
       <div className="text-white">
         <SectionHeader as="h1" number="02" title="Sonic Structures" />
       </div>
@@ -70,13 +74,15 @@ export default function MusicPage() {
         aria-labelledby="listen-title"
         data-reveal
         data-theme="ink"
-        className="bg-bg text-fg relative isolate z-10 mt-16 overflow-hidden"
+        className="text-fg relative isolate z-10 mt-16 overflow-hidden border border-white/15 bg-black/30 backdrop-blur-sm"
       >
         {tracks.length > 0 ? (
           <MediaPlayer
             tracks={tracks}
             listLabel="Released songs"
             variant="showcase"
+            backdrop={false}
+            onTrackChange={setCurrent}
             heading={
               <h2 id="listen-title" className="label text-accent mb-5">
                 Listen
@@ -145,7 +151,7 @@ export default function MusicPage() {
         <Link
           to="/music/unreleased"
           data-theme="ink"
-          className="group bg-bg text-fg grid gap-6 p-6 sm:grid-cols-[auto_1fr_auto] sm:items-center sm:p-8"
+          className="group text-fg grid gap-6 border border-white/15 bg-black/40 p-6 backdrop-blur-sm transition-colors hover:bg-black/55 sm:grid-cols-[auto_1fr_auto] sm:items-center sm:p-8"
         >
           <span aria-hidden="true" className="border-signal text-signal grid size-14 place-items-center border-2 text-2xl">
             ⌗
@@ -196,7 +202,7 @@ export default function MusicPage() {
         </div>
       </section>
 
-      <div aria-hidden="true" data-word="Sound" className="ghost-word display pointer-events-none absolute hidden md:block top-[18rem] -right-[0.1em] text-[26vw] whitespace-nowrap text-white/12" />
+      <div aria-hidden="true" data-word="Sound" className="ghost-word display pointer-events-none absolute hidden md:block top-[18rem] -right-[0.1em] text-[26vw] whitespace-nowrap text-white/[0.05]" />
     </div>
   )
 }

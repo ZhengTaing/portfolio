@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { useCoverColor } from '../lib/useCoverColor'
 import { formatTime, usePlaylist } from '../lib/usePlaylist'
 
@@ -31,6 +31,10 @@ interface Props {
   variant?: 'compact' | 'showcase'
   /** Optional heading shown above the showcase player. */
   heading?: ReactNode
+  /** Showcase only: draw the blurred cover behind the player itself (default true). */
+  backdrop?: boolean
+  /** Called whenever the current song changes (e.g. to theme the whole page). */
+  onTrackChange?: (track: PlayerTrack | undefined) => void
 }
 
 const BARS = [30, 70, 45, 90, 60, 35, 80, 50, 25, 65, 40, 85, 55, 30, 75, 45, 60, 20, 70, 50]
@@ -217,12 +221,16 @@ function CompactPlayer({ tracks, listLabel = 'Tracks', hideList = false, inline 
   )
 }
 
-/** Blurred copy of the current cover behind the player, cross-fading between songs. */
-function CoverBackdrop({ track }: { track?: PlayerTrack }) {
+/**
+ * Blurred copy of the current cover, cross-fading between songs. `fixed` fills
+ * the viewport behind a page; the page wrapper should use
+ * `relative isolate [clip-path:inset(0)]` so it never covers the header or footer.
+ */
+export function CoverBackdrop({ track, fixed = false }: { track?: PlayerTrack; fixed?: boolean }) {
   const [layers, setLayers] = useState<PlayerTrack[]>(track ? [track] : [])
   if (track && layers[layers.length - 1]?.id !== track.id) setLayers((l) => [...l.slice(-1), track])
   return (
-    <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-hidden bg-[#0e0e0e]">
+    <div aria-hidden="true" className={`pointer-events-none ${fixed ? 'fixed' : 'absolute'} inset-0 -z-10 overflow-hidden bg-[#0e0e0e]`}>
       {layers.map((l, i) =>
         l.artwork ? (
           <div
@@ -238,10 +246,14 @@ function CoverBackdrop({ track }: { track?: PlayerTrack }) {
 }
 
 /** The Unreleased-page player style: big artwork, info, playlist, cover-colored backdrop. */
-function ShowcasePlayer({ tracks, listLabel = 'Tracks', heading }: Props) {
+function ShowcasePlayer({ tracks, listLabel = 'Tracks', heading, backdrop = true, onTrackChange }: Props) {
   const p = usePlaylist(tracks)
   const { track } = p
   const accent = useCoverColor(track?.artwork?.src)
+  useEffect(() => {
+    onTrackChange?.(track)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [track?.id])
   if (!track) return null
   const progress = p.duration ? (p.time / p.duration) * 100 : 0
   const index = Math.max(p.index, 0)
@@ -251,7 +263,7 @@ function ShowcasePlayer({ tracks, listLabel = 'Tracks', heading }: Props) {
       className="p-5 sm:p-8"
       style={{ '--room-accent': accent, '--room-line': 'rgb(255 255 255 / 0.16)' } as CSSProperties}
     >
-      <CoverBackdrop track={track} />
+      {backdrop && <CoverBackdrop track={track} />}
       <audio {...p.audioProps} />
       {heading}
       <div aria-label="Player" role="region" className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,21rem)] lg:items-end lg:gap-10">
