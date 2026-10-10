@@ -6,7 +6,8 @@
 //   so they stream quickly; your original WAVs are left untouched.
 // - Titles come from the file name: "Song Name (ai demo).mp3" becomes
 //   title "Song Name" with the tag "AI demo"; "(v1)" or " V1" becomes "v1".
-// - If you edited a title or note in demos.json, that edit is kept.
+// - Every field you edited in demos.json (title, status, targets, notes…) is kept.
+// - New demos get blank pitch fields to fill in (see private-demos/README.md).
 // - Requires ffmpeg (brew install ffmpeg).
 
 import { execFileSync } from 'node:child_process'
@@ -45,6 +46,16 @@ for (const file of readdirSync(dir).sort()) {
   const id = base.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
   const kept = byId.get(id) ?? {}
   demos.push({
+    // Pitch fields: fill these in by hand. Anything you've edited is kept.
+    demoArtist: 'Zheng Taing',
+    targetArtists: [],
+    market: '',
+    actType: '',
+    genre: '',
+    bpm: null,
+    status: 'available',
+    pitchNotes: '',
+    ...kept,
     id,
     title: kept.title ?? title,
     file: served,

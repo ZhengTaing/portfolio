@@ -1,16 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { MediaPlayer } from '../components/MediaPlayer'
+import { PitchBoard } from '../components/PitchBoard'
+import type { Pitch } from '../lib/pitch'
 import { usePageMeta } from '../lib/usePageMeta'
 
-interface Demo {
-  id: string
-  title: string
-  note?: string
-  date?: string
-  duration?: string
-  audioUrl: string
-}
+type Demo = Pitch
 
 type State =
   | { kind: 'checking' }
@@ -98,7 +92,7 @@ export default function UnreleasedPage() {
       </nav>
 
       <header className="mb-10 border-b-[3px] border-current pb-6">
-        <p className="label text-signal mb-3">Private · Demos &amp; works in progress</p>
+        <p className="label text-signal mb-3">Private · Song pitches</p>
         <h1 className="display text-[clamp(2.75rem,9vw,8rem)]">Unreleased</h1>
       </header>
 
@@ -155,16 +149,20 @@ export default function UnreleasedPage() {
 
       {state.kind === 'unlocked' && (
         <section aria-label="Demos">
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-            <p className="label text-muted">Please don&rsquo;t share or download these.</p>
-            <button type="button" onClick={lock} className="label link-underline">
-              Lock page
-            </button>
-          </div>
           {state.demos.length === 0 ? (
             <p className="label border-line border p-6">No demos uploaded yet.</p>
           ) : (
-            <MediaPlayer tracks={state.demos} listLabel="Demos" />
+            <PitchBoard
+              pitches={state.demos}
+              toolbarStart={
+                <div className="label flex flex-wrap items-center gap-x-4 gap-y-1 py-2">
+                  <span className="text-muted">Please don&rsquo;t share or download these.</span>
+                  <button type="button" onClick={lock} className="link-underline uppercase">
+                    Lock page
+                  </button>
+                </div>
+              }
+            />
           )}
         </section>
       )}

@@ -20,13 +20,50 @@ const DEMOS_DIR = resolve(process.cwd(), 'private-demos')
 /** Max bytes per response; serverless functions cap response size (~4.5 MB on Vercel). */
 const CHUNK = 2 * 1024 * 1024
 
+export type PitchStatus = 'available' | 'on-hold' | 'reserved' | 'placed'
+
+/** One demo / song pitch, as stored in private-demos/demos.json. */
 export interface Demo {
   id: string
   title: string
+  /** Audio file inside private-demos/. */
   file: string
+  /** Optional cover image inside private-demos/ (e.g. "covers/moonlight.jpg"). */
+  cover?: string
   note?: string
   date?: string
   duration?: string
+  /** Who recorded / is associated with the demo. */
+  demoArtist?: string
+  /** Who the song is being pitched to. Empty means an open pitch. */
+  targetArtists?: string[]
+  market?: string
+  actType?: string
+  genre?: string
+  bpm?: number
+  status?: PitchStatus
+  pitchNotes?: string
+  /** On hold: ISO date the hold runs until (shown on the card). */
+  holdUntil?: string
+  /** Placed: who cut the song. */
+  placedWith?: string
+  /** Never sent to the browser. */
+  privateNotes?: string
+  /** Never sent to the browser. */
+  reservation?: string
+}
+
+/** The fields visitors are allowed to see; private management fields are dropped here. */
+export function toPublic(d: Demo) {
+  const { file: _file, cover, privateNotes: _notes, reservation: _reservation, ...rest } = d
+  return {
+    ...rest,
+    status: d.status ?? 'available',
+    holdUntil: d.status === 'on-hold' ? d.holdUntil : undefined,
+    placedWith: d.status === 'placed' ? d.placedWith : undefined,
+    audioUrl: `/api/demos/audio?id=${encodeURIComponent(d.id)}`,
+    coverUrl: cover ? `/api/demos/audio?id=${encodeURIComponent(d.id)}&kind=cover` : undefined,
+  }
 }
 
 interface Config {
@@ -129,7 +166,7 @@ export async function list(request: Request) {
   if (!isAuthed(request, cfg)) return json({ error: 'Password required.' }, 401)
   const demos = await loadDemos()
   return json({
-    demos: demos.map(({ file: _file, ...d }) => ({ ...d, audioUrl: `/api/demos/audio?id=${encodeURIComponent(d.id)}` })),
+    demos: demos.map(toPublic),
   })
 }
 
@@ -140,6 +177,10 @@ const MIME: Record<string, string> = {
   '.wav': 'audio/wav',
   '.ogg': 'audio/ogg',
   '.flac': 'audio/flac',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.webp': 'image/webp',
 }
 
 /** GET /api/demos/audio?id=…  →  the audio file, with Range support for seeking. */
@@ -148,12 +189,15 @@ export async function audio(request: Request) {
   if (!cfg) return new Response('Not configured', { status: 503 })
   if (!isAuthed(request, cfg)) return new Response('Password required', { status: 401 })
 
-  const id = new URL(request.url).searchParams.get('id')
+  const params = new URL(request.url).searchParams
+  const id = params.get('id')
   const demo = (await loadDemos()).find((d) => d.id === id)
   if (!demo) return new Response('Not found', { status: 404 })
+  const file = params.get('kind') === 'cover' ? demo.cover : demo.file
+  if (!file) return new Response('Not found', { status: 404 })
 
   // Only ever serve files from inside private-demos/.
-  const path = resolve(DEMOS_DIR, demo.file)
+  const path = resolve(DEMOS_DIR, file)
   if (!path.startsWith(DEMOS_DIR + '/')) return new Response('Not found', { status: 404 })
 
   let size: number

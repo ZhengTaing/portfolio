@@ -1,0 +1,419 @@
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import {
+  actTypes,
+  emptyFilters,
+  formatHold,
+  generatedCover,
+  genres,
+  markets,
+  matches,
+  statuses,
+  type Pitch,
+  type PitchFilters,
+} from '../lib/pitch'
+import { formatTime, usePlaylist } from '../lib/usePlaylist'
+
+function Cover({ pitch, className = '' }: { pitch: Pitch; className?: string }) {
+  if (pitch.coverUrl) {
+    return <img src={pitch.coverUrl} alt="" loading="lazy" className={`h-full w-full object-cover ${className}`} />
+  }
+  return <div aria-hidden="true" className={`h-full w-full ${className}`} style={{ background: generatedCover(pitch.id) }} />
+}
+
+function StatusBadge({ pitch, className = '' }: { pitch: Pitch; className?: string }) {
+  const s = statuses.find((x) => x.id === pitch.status) ?? statuses[0]
+  const hold = pitch.status === 'on-hold' && pitch.holdUntil ? ` · ${formatHold(pitch.holdUntil)}` : ''
+  return (
+    <span
+      className={`label bg-ink inline-flex items-center gap-1.5 border px-2 py-1 font-bold whitespace-nowrap ${className}`}
+      style={{ color: s.color, borderColor: s.color }}
+    >
+      <span aria-hidden="true" className="size-[7px] rounded-full" style={{ background: s.color }} />
+      {s.label}
+      {hold}
+    </span>
+  )
+}
+
+/** "For → A, B" / "Cut by → X" / "Open pitch" */
+function Targets({ pitch }: { pitch: Pitch }) {
+  const placed = pitch.status === 'placed'
+  const names = placed && pitch.placedWith ? [pitch.placedWith] : (pitch.targetArtists ?? []).filter(Boolean)
+  const shown = names.slice(0, 2)
+  return (
+    <div className="label flex flex-wrap items-center gap-1.5">
+      <span className="text-accent">{placed ? 'Cut by →' : 'For →'}</span>
+      {shown.length === 0 ? (
+        <span className="border-line border px-1.5">Open pitch</span>
+      ) : (
+        shown.map((n) => (
+          <span key={n} className="border-line border px-1.5">
+            {n}
+          </span>
+        ))
+      )}
+      {names.length > 2 && <span className="border-line border px-1.5">+{names.length - 2}</span>}
+    </div>
+  )
+}
+
+const metaLine = (p: Pitch) => [p.market, p.actType, p.genre, p.bpm ? `${p.bpm} BPM` : ''].filter(Boolean).join(' · ')
+
+function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={onClick}
+      className={`label border px-2 py-1 uppercase transition-colors ${on ? 'border-fg bg-fg text-bg' : 'border-line hover:border-fg'}`}
+    >
+      {children}
+    </button>
+  )
+}
+
+function FilterMenu({
+  filters,
+  setFilters,
+  pitches,
+  resultCount,
+}: {
+  filters: PitchFilters
+  setFilters: (f: PitchFilters) => void
+  pitches: Pitch[]
+  resultCount: number
+}) {
+  const [open, setOpen] = useState(false)
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const active: { group: keyof PitchFilters; value: string; label: string }[] = [
+    ...filters.status.map((v) => ({ group: 'status' as const, value: v, label: statuses.find((s) => s.id === v)!.label })),
+    ...filters.market.map((v) => ({ group: 'market' as const, value: v, label: v })),
+    ...filters.actType.map((v) => ({ group: 'actType' as const, value: v, label: v })),
+    ...filters.genre.map((v) => ({ group: 'genre' as const, value: v, label: v })),
+  ]
+
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: MouseEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  function toggle(group: keyof PitchFilters, value: string) {
+    const list = filters[group] as string[]
+    const next = list.includes(value) ? list.filter((v) => v !== value) : [...list, value]
+    setFilters({ ...filters, [group]: next })
+  }
+
+  const statusCount = (id: string) => pitches.filter((p) => p.status === id).length
+  const group = (title: string, children: ReactNode) => (
+    <div>
+      <p className="label text-muted mb-1.5">{title}</p>
+      <div className="flex flex-wrap gap-1.5">{children}</div>
+    </div>
+  )
+
+  return (
+    <div ref={wrapRef} className="relative flex flex-col items-end">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls="pitch-filters"
+        onClick={() => setOpen((o) => !o)}
+        className="label hover:text-accent inline-flex items-center gap-2 py-2 uppercase"
+      >
+        Filters
+        {active.length > 0 && <span className="bg-accent text-ink px-1.5 font-bold">{active.length}</span>}
+        <span aria-hidden="true">{open ? '▴' : '▾'}</span>
+      </button>
+
+      {active.length > 0 && (
+        <div className="mt-1 flex flex-wrap justify-end gap-1.5">
+          {active.map((a) => (
+            <button
+              key={a.group + a.value}
+              type="button"
+              onClick={() => toggle(a.group, a.value)}
+              aria-label={`Remove filter ${a.label}`}
+              className="label border-line text-muted hover:text-fg border px-2 py-0.5 uppercase"
+            >
+              {a.label} <span aria-hidden="true">✕</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {open && (
+        <div
+          id="pitch-filters"
+          role="group"
+          aria-label="Filter songs"
+          className="absolute top-10 right-0 z-30 grid w-[min(26rem,calc(100vw-2rem))] gap-4 bg-[#151515] p-4 shadow-[0_20px_50px_rgb(0_0_0/0.6)]"
+        >
+          {group(
+            'Status',
+            statuses.map((s) => (
+              <Chip key={s.id} on={filters.status.includes(s.id)} onClick={() => toggle('status', s.id)}>
+                <span aria-hidden="true" className="mr-1.5 inline-block size-[7px] rounded-full" style={{ background: s.color }} />
+                {s.label} ({statusCount(s.id)})
+              </Chip>
+            )),
+          )}
+          {group(
+            'Market',
+            markets.map((m) => (
+              <Chip key={m} on={filters.market.includes(m)} onClick={() => toggle('market', m)}>
+                {m}
+              </Chip>
+            )),
+          )}
+          {group(
+            'Act type',
+            actTypes.map((a) => (
+              <Chip key={a} on={filters.actType.includes(a)} onClick={() => toggle('actType', a)}>
+                {a}
+              </Chip>
+            )),
+          )}
+          {group(
+            'Genre',
+            genres.map((g) => (
+              <Chip key={g} on={filters.genre.includes(g)} onClick={() => toggle('genre', g)}>
+                {g}
+              </Chip>
+            )),
+          )}
+          <div className="label flex justify-between pt-1">
+            <button type="button" onClick={() => setFilters(emptyFilters)} className="text-muted hover:text-fg uppercase">
+              Clear all
+            </button>
+            <button type="button" onClick={() => setOpen(false)} className="hover:text-accent uppercase">
+              Show {resultCount} {resultCount === 1 ? 'song' : 'songs'} →
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Song-pitch board for the private demos: filter menu, a player with the
+ * current playlist beside it, and horizontal pitch cards that feed the player.
+ */
+export function PitchBoard({ pitches, toolbarStart }: { pitches: Pitch[]; toolbarStart?: ReactNode }) {
+  const [filters, setFilters] = useState<PitchFilters>(emptyFilters)
+  const visible = useMemo(() => pitches.filter((p) => matches(p, filters)), [pitches, filters])
+  const p = usePlaylist(visible.length ? visible : pitches)
+  const { track } = p
+  const progress = p.duration ? (p.time / p.duration) * 100 : 0
+  const queue = visible
+
+  return (
+    <div>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>{toolbarStart}</div>
+        <FilterMenu filters={filters} setFilters={setFilters} pitches={pitches} resultCount={visible.length} />
+      </div>
+
+      <audio {...p.audioProps} />
+
+      {track && (
+        <section
+          aria-label="Player"
+          className="border-fg relative z-20 mb-8 grid border-2 bg-[#141414] lg:grid-cols-[1.15fr_1fr]"
+        >
+          {/* Now playing */}
+          <div className="border-line grid grid-cols-[4.5rem_1fr] items-center gap-4 p-4 sm:grid-cols-[6rem_1fr] sm:gap-5 sm:p-5 lg:border-r">
+            <div className="size-[4.5rem] overflow-hidden sm:size-24">
+              <Cover pitch={track} />
+            </div>
+            <div className="min-w-0">
+              <p className="label text-accent flex flex-wrap items-center gap-x-2" aria-live="polite">
+                {p.playing ? 'Now playing' : 'Paused'}
+                {p.index >= 0 && (
+                  <span>
+                    · {p.index + 1} of {queue.length}
+                  </span>
+                )}
+              </p>
+              <h2 className="font-display mt-1 truncate text-2xl leading-none font-extrabold tracking-[-0.02em] sm:text-[1.75rem]">
+                {track.title}
+              </h2>
+              <p className="label text-muted mt-1 truncate">
+                Demo: {track.demoArtist || 'Zheng Taing'}
+                {track.targetArtists?.length ? ` · For → ${track.targetArtists.join(', ')}` : ''}
+              </p>
+              {p.error && (
+                <p role="alert" className="text-accent mt-1 text-sm">
+                  This demo could not be loaded right now.
+                </p>
+              )}
+              <div className="mt-3 flex items-center gap-3">
+                <span className="label w-9 text-right tabular-nums">{formatTime(p.time)}</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={p.duration || 0}
+                  step={0.1}
+                  value={p.time}
+                  onChange={(e) => p.seek(Number(e.target.value))}
+                  aria-label="Seek"
+                  aria-valuetext={`${formatTime(p.time)} of ${formatTime(p.duration)}`}
+                  className="demo-range min-w-0 flex-1"
+                  style={{ '--progress': `${progress}%` } as CSSProperties}
+                />
+                <span className="label w-9 tabular-nums">{formatTime(p.duration)}</span>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={p.prev}
+                  aria-label="Previous track"
+                  className="border-fg hover:bg-fg hover:text-bg grid size-10 place-items-center border-2 transition-colors"
+                >
+                  ⏮
+                </button>
+                <button
+                  type="button"
+                  onClick={p.toggle}
+                  aria-label={p.playing ? 'Pause' : 'Play'}
+                  className="bg-accent text-ink grid size-12 place-items-center text-xl transition-transform hover:scale-105"
+                >
+                  {p.playing ? '❚❚' : '▶'}
+                </button>
+                <button
+                  type="button"
+                  onClick={p.next}
+                  disabled={!p.hasNext}
+                  aria-label="Next track"
+                  className="border-fg hover:bg-fg hover:text-bg grid size-10 place-items-center border-2 transition-colors disabled:pointer-events-none disabled:opacity-40"
+                >
+                  ⏭
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={p.shuffle}
+                  onClick={() => p.setShuffle(!p.shuffle)}
+                  className={`label ml-1 px-1 uppercase ${p.shuffle ? 'text-accent' : 'text-muted hover:text-fg'}`}
+                >
+                  Shuffle {p.shuffle ? 'on' : 'off'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Playlist = the current filtered list */}
+          <div className="border-line max-h-[12rem] overflow-y-auto border-t py-2 sm:max-h-[15.5rem] lg:border-t-0">
+            <p className="label text-muted flex justify-between px-4 pt-1 pb-2">
+              <span>Playlist{filtersSummary(filters)}</span>
+              <span>
+                {queue.length} {queue.length === 1 ? 'song' : 'songs'}
+              </span>
+            </p>
+            <ol aria-label="Playlist">
+              {queue.map((q, i) => {
+                const current = q.id === track.id
+                return (
+                  <li key={q.id}>
+                    <button
+                      type="button"
+                      onClick={() => p.playTrack(q.id)}
+                      aria-current={current ? 'true' : undefined}
+                      aria-label={`${current && p.playing ? 'Pause' : 'Play'} ${q.title} from playlist`}
+                      className={`grid w-full grid-cols-[1.75rem_2.25rem_1fr_auto] items-center gap-3 px-4 py-1.5 text-left transition-colors ${current ? 'text-accent bg-[rgb(255_106_74/0.1)]' : 'hover:bg-white/5'}`}
+                    >
+                      <span className="label text-muted tabular-nums">
+                        {current && p.playing ? <span className="text-accent">▶</span> : String(i + 1).padStart(2, '0')}
+                      </span>
+                      <span className="size-9 overflow-hidden">
+                        <Cover pitch={q} />
+                      </span>
+                      <span className="font-display truncate text-sm font-bold">{q.title}</span>
+                      <span className="label text-muted tabular-nums">{q.duration}</span>
+                    </button>
+                  </li>
+                )
+              })}
+            </ol>
+          </div>
+        </section>
+      )}
+
+      <p className="sr-only" role="status" aria-live="polite">
+        Showing {visible.length} {visible.length === 1 ? 'song' : 'songs'}
+      </p>
+
+      {visible.length === 0 ? (
+        <div className="label border-line border p-6">
+          No songs match these filters.{' '}
+          <button type="button" onClick={() => setFilters(emptyFilters)} className="link-underline">
+            Clear filters
+          </button>
+        </div>
+      ) : (
+        <ul data-reveal-stagger className="grid gap-3.5 md:grid-cols-2" aria-label="Song pitches">
+          {visible.map((pitch) => {
+            const current = track?.id === pitch.id
+            const placed = pitch.status === 'placed'
+            const meta = metaLine(pitch)
+            return (
+              <li key={pitch.id}>
+                <article
+                  className={`bg-surface relative grid h-full grid-cols-[6.5rem_1fr] border sm:grid-cols-[8.25rem_1fr] ${current ? 'border-accent outline-accent outline-1' : 'border-line'}`}
+                >
+                  <div className="relative min-h-[8.25rem]">
+                    <Cover pitch={pitch} className={`absolute inset-0 ${placed ? 'brightness-[0.6] grayscale' : ''}`} />
+                    <button
+                      type="button"
+                      onClick={() => p.playTrack(pitch.id)}
+                      aria-label={`${current && p.playing ? 'Pause' : 'Play'} ${pitch.title}`}
+                      className="bg-accent text-ink absolute bottom-2 left-2 grid size-9 place-items-center text-sm transition-transform hover:scale-110"
+                    >
+                      {current && p.playing ? '❚❚' : '▶'}
+                    </button>
+                  </div>
+                  <div className="flex min-w-0 flex-col gap-1.5 p-3 sm:p-3.5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="font-display text-lg leading-none font-extrabold tracking-[-0.02em] sm:text-xl">
+                          {pitch.title}
+                        </h3>
+                        <p className="label text-muted mt-1">
+                          Demo: {pitch.demoArtist || 'Zheng Taing'}
+                          {pitch.note ? ` (${pitch.note})` : ''}
+                        </p>
+                      </div>
+                      <StatusBadge pitch={pitch} className="shrink-0" />
+                    </div>
+                    <Targets pitch={pitch} />
+                    {meta && <p className="label text-muted">{meta}</p>}
+                    {pitch.pitchNotes && <p className="line-clamp-2 text-xs leading-relaxed text-[#ddd]">{pitch.pitchNotes}</p>}
+                    <p className="label text-muted mt-auto pt-1">{pitch.duration}</p>
+                  </div>
+                </article>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+function filtersSummary(f: PitchFilters) {
+  const parts = [
+    ...f.status.map((s) => statuses.find((x) => x.id === s)?.label ?? s),
+    ...f.market,
+    ...f.actType,
+    ...f.genre,
+  ]
+  return parts.length ? ` · ${parts.join(' · ')}` : ' · All songs'
+}

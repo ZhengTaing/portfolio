@@ -206,8 +206,28 @@ describe('unreleased demos', () => {
 
   it('asks for a password, rejects a wrong one, and shows demos after unlocking', async () => {
     const demos = [
-      { id: 'd1', title: 'Secret Song', audioUrl: '/api/demos/audio?id=d1' },
-      { id: 'd2', title: 'Second Song', audioUrl: '/api/demos/audio?id=d2' },
+      {
+        id: 'd1',
+        title: 'Secret Song',
+        audioUrl: '/api/demos/audio?id=d1',
+        status: 'available',
+        demoArtist: 'Zheng Taing',
+        targetArtists: ['Artist A'],
+        market: 'K-pop',
+        actType: 'Girl group',
+        genre: 'Dance pop',
+        bpm: 118,
+      },
+      {
+        id: 'd2',
+        title: 'Second Song',
+        audioUrl: '/api/demos/audio?id=d2',
+        status: 'on-hold',
+        holdUntil: '2026-10-30',
+        market: 'Western pop',
+        actType: 'Solo artist',
+        genre: 'Pop ballad',
+      },
     ]
     let authed = false
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
@@ -234,11 +254,23 @@ describe('unreleased demos', () => {
 
     await user.type(screen.getByLabelText('Password'), 'right')
     await user.click(screen.getByRole('button', { name: 'Unlock' }))
-    expect(await screen.findByRole('heading', { name: 'Secret Song' })).toBeInTheDocument()
+    const cards = await screen.findByRole('list', { name: 'Song pitches' })
+    expect(within(cards).getByRole('heading', { name: 'Secret Song' })).toBeInTheDocument()
+    expect(within(cards).getAllByText('Demo: Zheng Taing')).toHaveLength(2)
+    expect(within(cards).getByText('Artist A')).toBeInTheDocument()
+    expect(within(cards).getByText(/On hold · Oct 30/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Play Secret Song' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument()
+    expect(screen.getByRole('list', { name: 'Playlist' })).toBeInTheDocument()
     expect(screen.getByRole('slider', { name: 'Seek' })).toBeInTheDocument()
     expect(document.querySelector('audio')).toHaveAttribute('src', '/api/demos/audio?id=d1')
+
+    // Filters narrow both the cards and the playlist.
+    await user.click(screen.getByRole('button', { name: /^Filters/ }))
+    await user.click(screen.getByRole('button', { name: 'K-pop' }))
+    expect(within(cards).queryByRole('heading', { name: 'Second Song' })).not.toBeInTheDocument()
+    expect(within(screen.getByRole('list', { name: 'Playlist' })).getAllByRole('listitem')).toHaveLength(1)
+    await user.click(screen.getByRole('button', { name: 'Remove filter K-pop' }))
+    expect(within(cards).getByRole('heading', { name: 'Second Song' })).toBeInTheDocument()
   })
 })
 

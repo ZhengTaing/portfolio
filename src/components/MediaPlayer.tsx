@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import type { CSSProperties } from 'react'
+import { formatTime, usePlaylist } from '../lib/usePlaylist'
 
 export interface PlayerTrack {
   id: string
@@ -23,92 +24,23 @@ interface Props {
   inline?: boolean
 }
 
-function formatTime(seconds: number) {
-  if (!Number.isFinite(seconds) || seconds < 0) return '0:00'
-  const m = Math.floor(seconds / 60)
-  const s = Math.floor(seconds % 60)
-  return `${m}:${String(s).padStart(2, '0')}`
-}
-
 const BARS = [30, 70, 45, 90, 60, 35, 80, 50, 25, 65, 40, 85, 55, 30, 75, 45, 60, 20, 70, 50]
 
 /**
  * Playlist-style media player: one shared <audio> element, a now-playing
  * panel with transport controls and a seek bar, and a clickable tracklist.
- * Plays straight through the list. Used for released songs and private demos.
+ * Plays straight through the list. Used for released songs.
  */
 export function MediaPlayer({ tracks, listLabel = 'Tracks', hideList = false, inline = false }: Props) {
-  const audioRef = useRef<HTMLAudioElement>(null)
-  const [index, setIndex] = useState(0)
-  const [playing, setPlaying] = useState(false)
-  const [time, setTime] = useState(0)
-  const [duration, setDuration] = useState(0)
-  const [volume, setVolume] = useState(1)
-  const [error, setError] = useState(false)
-  const autoplayNext = useRef(false)
-
-  const track = tracks[index]
-  const hasPrev = index > 0
-  const hasNext = index < tracks.length - 1
-
-  // When the track changes, load it and keep playing if we were playing.
-  useEffect(() => {
-    const audio = audioRef.current
-    if (!audio) return
-    setTime(0)
-    setDuration(0)
-    setError(false)
-    audio.load()
-    if (autoplayNext.current) {
-      audio.play().catch(() => setPlaying(false))
-    }
-  }, [index])
-
-  useEffect(() => {
-    if (audioRef.current) audioRef.current.volume = volume
-  }, [volume])
-
-  function toggle() {
-    const audio = audioRef.current
-    if (!audio) return
-    if (audio.paused) {
-      autoplayNext.current = true
-      audio.play().catch(() => setPlaying(false))
-    } else {
-      autoplayNext.current = false
-      audio.pause()
-    }
-  }
-
-  function select(i: number, play = true) {
-    if (i === index) {
-      if (play && audioRef.current?.paused) toggle()
-      return
-    }
-    autoplayNext.current = play
-    setIndex(i)
-  }
-
-  function prev() {
-    const audio = audioRef.current
-    // Like most players: restart the song first, then go back.
-    if (audio && audio.currentTime > 3) {
-      audio.currentTime = 0
-      return
-    }
-    if (hasPrev) select(index - 1, playing)
-  }
-
-  function next() {
-    if (hasNext) select(index + 1, playing)
-  }
-
-  function seek(value: number) {
-    const audio = audioRef.current
-    if (!audio) return
-    audio.currentTime = value
-    setTime(value)
-  }
+  const p = usePlaylist(tracks)
+  const { track, playing, time, duration, volume, error, hasNext } = p
+  const index = Math.max(p.index, 0)
+  const toggle = p.toggle
+  const prev = p.prev
+  const next = p.next
+  const seek = p.seek
+  const setVolume = p.setVolume
+  const select = (i: number) => p.playTrack(tracks[i].id)
 
   if (!track) return null
 
@@ -116,29 +48,7 @@ export function MediaPlayer({ tracks, listLabel = 'Tracks', hideList = false, in
 
   return (
     <div>
-      <audio
-        ref={audioRef}
-        src={track.audioUrl}
-        preload="metadata"
-        onPlay={() => setPlaying(true)}
-        onPause={() => setPlaying(false)}
-        onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
-        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
-        onDurationChange={(e) => setDuration(e.currentTarget.duration)}
-        onError={() => {
-          setError(true)
-          setPlaying(false)
-        }}
-        onEnded={() => {
-          if (hasNext) {
-            autoplayNext.current = true
-            setIndex(index + 1)
-          } else {
-            autoplayNext.current = false
-            setPlaying(false)
-          }
-        }}
-      />
+      <audio {...p.audioProps} />
 
       {/* Now playing */}
       <section

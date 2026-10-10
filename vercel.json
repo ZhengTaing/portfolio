@@ -45,7 +45,7 @@
   ],
   "functions": {
     "api/demos/*.ts": {
-      "includeFiles": "private-demos/{demos.json,*.mp3,*.m4a,web/**}"
+      "includeFiles": "private-demos/{demos.json,*.mp3,*.m4a,web/**,covers/**}"
     }
   }
 }

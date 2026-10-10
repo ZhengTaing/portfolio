@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pitch Cards Mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  :root { --bg:#0e0e0e; --fg:#fff; --muted:#a8a8a8; --line:#333; --surface:#1a1a1a; --accent:#ff6a4a;
+    --available:#3ddc84; --hold:#ffb020; --reserved:#6ea8ff; --placed:#8a8a8a; }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: var(--bg); color: var(--fg); font: 13px/1.5 "Space Mono", monospace; padding: 40px 32px 80px; }
+  .label { text-transform: uppercase; font-size: 11px; letter-spacing: .08em; }
+  .muted { color: var(--muted); }
+  .display { font-family: Archivo; font-weight: 800; font-stretch: 112%; text-transform: uppercase; letter-spacing: -.035em; line-height: .86; }
+  .note { background:#ffe600; color:#000; display:inline-block; padding:4px 8px; margin-bottom:24px; }
+  .head { display:flex; justify-content:space-between; align-items:flex-end; gap:24px; margin-bottom:24px; }
+  h1 { font-size: 72px; margin-top: 8px; }
+  .title { font-family: Archivo; font-weight:800; letter-spacing:-.02em; line-height:1; }
+  .dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:currentColor; margin-right:6px; vertical-align:middle; }
+  .s-available { color: var(--available); } .s-hold { color: var(--hold); } .s-reserved { color: var(--reserved); } .s-placed { color: var(--placed); }
+  .cover { width:100%; height:100%; }
+  .c1 { background: radial-gradient(circle at 30% 30%, #ffd1e8, #b4006e 55%, #1a0010); }
+  .c2 { background: linear-gradient(160deg, #0f2a4a, #3c7dd9 60%, #c7e3ff); }
+  .c3 { background: radial-gradient(circle at 70% 40%, #ffe29a, #ff6a4a 55%, #2a0a00); }
+  .c4 { background: linear-gradient(200deg, #1b1b1b, #6b6b6b 60%, #d9d9d9); }
+  .c5 { background: radial-gradient(circle at 50% 60%, #a7f0cf, #2e6a50 55%, #0b1f17); }
+  .c6 { background: linear-gradient(135deg, #2d0b4e, #8b4dff 60%, #ffd6ff); }
+
+  /* compact filters: one button in the corner + active pills */
+  .filterbox { position:relative; text-align:right; }
+  .fbtn { padding:8px 0; display:inline-flex; gap:8px; align-items:center; }
+  .fbtn b { background: var(--accent); color:#000; padding:0 6px; font-weight:700; }
+  .pills { margin-top:8px; display:flex; gap:6px; justify-content:flex-end; flex-wrap:wrap; }
+  .pill { border:1px solid var(--line); padding:3px 8px; color:var(--muted); }
+  .pill::after { content:" ✕"; color:#666; }
+  .popover { position:absolute; right:0; top:44px; width:420px; background:#151515; border:0; padding:16px; text-align:left; z-index:10; box-shadow:0 20px 50px #000a; }
+  .popover h4 { color: var(--muted); font-weight:400; margin:12px 0 6px; } .popover h4:first-child { margin-top:0; }
+  .popover .row { display:flex; flex-wrap:wrap; gap:5px; }
+  .popover .chip { border:1px solid var(--line); padding:3px 8px; }
+  .popover .chip.on { background:#fff; color:#000; border-color:#fff; }
+  .popover .foot { display:flex; justify-content:space-between; margin-top:14px; color:var(--muted); }
+
+  /* player with visible queue */
+  .player { border:2px solid #fff; background:#141414; display:grid; grid-template-columns: 1.1fr 1fr; margin-bottom:28px; }
+  .now { padding:18px; display:grid; grid-template-columns:96px 1fr; gap:18px; align-items:center; border-right:1px solid var(--line); }
+  .now .thumb { width:96px; height:96px; }
+  .seek { display:flex; align-items:center; gap:10px; margin-top:10px; }
+  .bar { flex:1; height:4px; background:var(--line); } .bar i { display:block; width:38%; height:100%; background:var(--accent); }
+  .ctrl { display:flex; gap:8px; align-items:center; margin-top:12px; }
+  .ctrl span { width:38px; height:38px; border:2px solid #fff; display:grid; place-items:center; }
+  .ctrl .main { width:48px; height:48px; background:var(--accent); color:#000; border:0; font-size:18px; }
+  .queue { padding:12px 0; max-height:236px; overflow:auto; }
+  .queue h4 { padding:4px 16px 8px; color:var(--muted); font-weight:400; display:flex; justify-content:space-between; }
+  .q { display:grid; grid-template-columns: 28px 36px 1fr auto; gap:10px; align-items:center; padding:6px 16px; }
+  .q .t { width:36px; height:36px; }
+  .q.now-row { background:#ff6a4a1a; color: var(--accent); }
+  .q .name { font-family:Archivo; font-weight:700; font-size:14px; text-transform:none; letter-spacing:0; }
+
+  /* horizontal cards */
+  .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(440px, 1fr)); gap: 14px; }
+  .card { background: var(--surface); border:1px solid var(--line); display:grid; grid-template-columns: 132px 1fr; position:relative; min-height:132px; }
+  .card.playing { outline:2px solid var(--accent); outline-offset:-2px; }
+  .card .art { position:relative; }
+  .card .play { position:absolute; left:8px; bottom:8px; width:34px; height:34px; background:var(--accent); color:#000; display:grid; place-items:center; font-size:13px; }
+  .card .body { padding:12px 14px; display:flex; flex-direction:column; gap:6px; min-width:0; }
+  .badge { position:absolute; top:10px; right:10px; padding:3px 8px; font-weight:700; border:1px solid currentColor; background:#0e0e0e; }
+  .card .title { font-size:20px; padding-right:110px; }
+  .for { display:flex; flex-wrap:wrap; gap:5px; align-items:center; }
+  .for b { color: var(--accent); font-weight:400; }
+  .tag { border:1px solid var(--line); padding:1px 6px; }
+  .pitch { color:#ddd; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .placed .art .cover { filter: grayscale(1) brightness(.6); }
+  @media (max-width: 760px) { body{padding:24px 16px} h1{font-size:44px} .head{flex-direction:column;align-items:flex-start} .player{grid-template-columns:1fr} .now{border-right:0;border-bottom:1px solid var(--line)} .grid{grid-template-columns:1fr} .card{grid-template-columns:96px 1fr} .popover{width:min(420px,calc(100vw - 32px))} }
+</style>
+</head>
+<body>
+<span class="note label">Mockup v3 · Unreleased page · sample data</span>
+
+<div class="head">
+  <div>
+    <p class="label" style="color:var(--accent)">Private · Song pitches</p>
+    <h1 class="display">Unreleased</h1>
+  </div>
+  <div class="filterbox label">
+    <span class="fbtn">⚙ Filters <b>2</b> ▾</span>
+    <div class="pills"><span class="pill">K-pop</span><span class="pill">Available</span></div>
+    <!-- open state of the filter menu -->
+    <div class="popover">
+      <h4>Status</h4>
+      <div class="row"><span class="chip on"><span class="dot s-available"></span>Available</span><span class="chip"><span class="dot s-hold"></span>On hold</span><span class="chip"><span class="dot s-reserved"></span>Reserved</span><span class="chip"><span class="dot s-placed"></span>Placed</span></div>
+      <h4>Market</h4>
+      <div class="row"><span class="chip on">K-pop</span><span class="chip">Western pop</span></div>
+      <h4>Act type</h4>
+      <div class="row"><span class="chip">Girl group</span><span class="chip">Boy group</span><span class="chip">Solo artist</span></div>
+      <h4>Genre</h4>
+      <div class="row"><span class="chip">Pop</span><span class="chip">Dance pop</span><span class="chip">Alt pop</span><span class="chip">R&amp;B</span><span class="chip">Ballad</span><span class="chip">EDM</span><span class="chip">Pop ballad</span><span class="chip">Folk</span><span class="chip">Synth pop</span></div>
+      <div class="foot"><span>Clear all</span><span style="color:#fff">Show 6 songs →</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Player: now playing on the left, the playlist (current filtered list) on the right -->
+<section class="player label">
+  <div class="now">
+    <div class="thumb cover c1"></div>
+    <div>
+      <div style="color:var(--accent)">Now playing · 1 of 6 · <span class="s-available">● Available</span></div>
+      <div class="title" style="font-size:26px;text-transform:none;margin-top:4px">Moonlight</div>
+      <div class="muted" style="margin-top:2px">Demo: Zheng Taing (AI vocal) · For → [Target artist A]</div>
+      <div class="seek"><span>0:24</span><div class="bar"><i></i></div><span>1:04</span></div>
+      <div class="ctrl"><span>⏮</span><span class="main">❚❚</span><span>⏭</span><span style="border:0;width:auto;color:var(--muted)">🔀 Shuffle</span></div>
+    </div>
+  </div>
+  <div class="queue">
+    <h4><span>Playlist · K-pop · Available</span><span>6 songs</span></h4>
+    <div class="q now-row"><span>▶</span><div class="t cover c1"></div><span class="name">Moonlight</span><span>1:04</span></div>
+    <div class="q"><span class="muted">02</span><div class="t cover c5"></div><span class="name">Voltage</span><span class="muted">1:56</span></div>
+    <div class="q"><span class="muted">03</span><div class="t cover c6"></div><span class="name">LA LA LA</span><span class="muted">1:23</span></div>
+    <div class="q"><span class="muted">04</span><div class="t cover c3"></div><span class="name">Undercover</span><span class="muted">1:02</span></div>
+    <div class="q"><span class="muted">05</span><div class="t cover c2"></div><span class="name">Parasite</span><span class="muted">1:19</span></div>
+    <div class="q"><span class="muted">06</span><div class="t cover c4"></div><span class="name">Pink Down</span><span class="muted">1:14</span></div>
+  </div>
+</section>
+
+<div class="grid label">
+  <article class="card playing">
+    <div class="art"><div class="cover c1"></div><span class="play">❚❚</span></div>
+    <div class="body">
+      <div><div class="title" style="text-transform:none">Moonlight</div><div class="muted" style="margin-top:3px">Demo: Zheng Taing (AI vocal)</div></div>
+      <div class="for"><b>For →</b><span class="tag">[Target artist A]</span><span class="tag">[Target artist B]</span></div>
+      <div class="muted">K-pop · Girl group · Dance pop · 118 BPM</div>
+      <p class="pitch" style="text-transform:none">Bright, hooky chorus built for a big dance break. Bridge has room for a rap verse.</p>
+    </div>
+    <span class="badge s-available"><span class="dot"></span>Available</span>
+  </article>
+
+  <article class="card">
+    <div class="art"><div class="cover c2"></div><span class="play">▶</span></div>
+    <div class="body">
+      <div><div class="title" style="text-transform:none">First Dance</div><div class="muted" style="margin-top:3px">Demo: Zheng Taing (v1)</div></div>
+      <div class="for"><b>For →</b><span class="tag">[Target artist C]</span></div>
+      <div class="muted">Western pop · Solo artist · Pop ballad · 72 BPM</div>
+      <p class="pitch" style="text-transform:none">Wedding-season ballad. Intimate verses, full-band final chorus.</p>
+    </div>
+    <span class="badge s-hold"><span class="dot"></span>On hold · Oct 30</span>
+  </article>
+
+  <article class="card">
+    <div class="art"><div class="cover c3"></div><span class="play">▶</span></div>
+    <div class="body">
+      <div><div class="title" style="text-transform:none">Heart on the Dance Floor</div><div class="muted" style="margin-top:3px">Demo: Zheng Taing (AI vocal)</div></div>
+      <div class="for"><b>For →</b><span class="tag">[Target artist D]</span></div>
+      <div class="muted">K-pop · Boy group · Dance pop · 124 BPM</div>
+      <p class="pitch" style="text-transform:none">Retro disco groove with a falsetto post-chorus.</p>
+    </div>
+    <span class="badge s-reserved"><span class="dot"></span>Reserved</span>
+  </article>
+
+  <article class="card placed">
+    <div class="art"><div class="cover c4"></div><span class="play">▶</span></div>
+    <div class="body">
+      <div><div class="title" style="text-transform:none">Karma</div><div class="muted" style="margin-top:3px">Demo: Zheng Taing</div></div>
+      <div class="for"><b>Cut by →</b><span class="tag">PRION HEART, Koa</span></div>
+      <div class="muted">K-pop · Girl group · Pop · 100 BPM</div>
+      <p class="pitch" style="text-transform:none">Released. Kept here as a reference for the sound.</p>
+    </div>
+    <span class="badge s-placed"><span class="dot"></span>Placed</span>
+  </article>
+
+  <article class="card">
+    <div class="art"><div class="cover c5"></div><span class="play">▶</span></div>
+    <div class="body">
+      <div><div class="title" style="text-transform:none">Voltage</div><div class="muted" style="margin-top:3px">Demo: Zheng Taing (AI vocal)</div></div>
+      <div class="for"><b>For →</b><span class="tag">Open pitch</span></div>
+      <div class="muted">Western pop · Solo artist · Synth pop · 128 BPM</div>
+      <p class="pitch" style="text-transform:none">High-energy synth hook, works for a girl group or solo female.</p>
+    </div>
+    <span class="badge s-available"><span class="dot"></span>Available</span>
+  </article>
+
+  <article class="card">
+    <div class="art"><div class="cover c6"></div><span class="play">▶</span></div>
+    <div class="body">
+      <div><div class="title" style="text-transform:none">Never Let You Go</div><div class="muted" style="margin-top:3px">Demo: Zheng Taing (v1)</div></div>
+      <div class="for"><b>For →</b><span class="tag">[Target artist E]</span><span class="tag">+2</span></div>
+      <div class="muted">Western pop · Solo artist · R&amp;B · 88 BPM</div>
+      <p class="pitch" style="text-transform:none">Smooth mid-tempo R&amp;B, strong pre-chorus lift.</p>
+    </div>
+    <span class="badge s-available"><span class="dot"></span>Available</span>
+  </article>
+</div>
+</body>
+</html>

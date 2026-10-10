@@ -1,25 +1,36 @@
-# Private demos
+# Private demos (song pitches)
 
-Files in this folder are **never** published as part of the public site.
-They are only served by the password-checked `/api/demos` functions.
+Files in this folder are **never** published to GitHub. They are only served by the
+password-checked `/api/demos` functions on Vercel.
 
 ## Adding a demo
 
-1. Drop the audio file in this folder (MP3, M4A or WAV).
-   Name it the way you want it shown, e.g. `Song Name (ai demo).mp3` or `Song Name (v2).m4a`.
-2. In the project folder, run:
+1. Drop the audio file here (MP3, M4A or WAV), named how you want it shown,
+   e.g. `Song Name (ai demo).mp3`.
+2. Run `npm run demos`. It adds the song to `demos.json` with blank pitch fields
+   and makes small streaming copies of WAVs. Everything you've already filled in is kept.
+3. Run `npm run deploy` to publish.
 
-   ```bash
-   npm run demos
-   ```
+## Pitch fields in `demos.json`
 
-   This converts WAVs to small `.m4a` copies in `web/` (your originals stay as they are)
-   and rebuilds `demos.json`. Titles, notes and dates you edited by hand in `demos.json` are kept.
+```json
+{
+  "title": "Moonlight",
+  "demoArtist": "Zheng Taing",                 // who recorded / is on the demo
+  "targetArtists": ["Artist A", "Artist B"],   // who you're pitching to ([] = "Open pitch")
+  "market": "K-pop",                           // K-pop | Western pop
+  "actType": "Girl group",                     // Girl group | Boy group | Solo artist
+  "genre": "Dance pop",                        // Pop | Dance pop | Alt pop | R&B | Ballad | EDM | Pop ballad | Folk | Synth pop
+  "bpm": 118,
+  "status": "available",                       // available | on-hold | reserved | placed
+  "holdUntil": "2026-10-30",                   // on-hold only (shown on the card)
+  "placedWith": "Artist C",                    // placed only (shown as "Cut by →")
+  "pitchNotes": "Short note shown on the card.",
+  "cover": "covers/moonlight.jpg",             // optional image in private-demos/covers/
+  "privateNotes": "Only for you.",             // NEVER sent to visitors
+  "reservation": "Who / terms"                 // NEVER sent to visitors
+}
+```
 
-## Deploying
-
-Only `demos.json`, MP3/M4A files and the `web/` folder are uploaded with the site (see `vercel.json`).
-The large WAV originals stay on your computer.
-
-Keep the GitHub repository **private** if this folder is committed, or deploy
-with the Vercel CLI from your computer so the files never go to GitHub.
+Spell market, act type and genre exactly as listed so the filters pick them up.
+Without a `cover`, the site shows a generated color cover.
