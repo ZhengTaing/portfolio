@@ -126,7 +126,7 @@ function FilterMenu({
   )
 
   return (
-    <div ref={wrapRef} className="relative flex flex-col items-end">
+    <div ref={wrapRef} className="relative ml-auto flex flex-col items-end">
       <button
         type="button"
         aria-expanded={open}
@@ -256,7 +256,7 @@ export function PitchBoard({ pitches, toolbarStart }: { pitches: Pitch[]; toolba
   return (
     <div style={{ '--room-accent': accent, '--room-line': 'rgb(255 255 255 / 0.16)' } as CSSProperties}>
       <Backdrop pitch={track} />
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+      <div className="relative z-30 mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>{toolbarStart}</div>
         <FilterMenu filters={filters} setFilters={setFilters} pitches={pitches} resultCount={visible.length} />
       </div>
