@@ -18,15 +18,16 @@ password-checked `/api/demos` functions on Vercel.
   "title": "Moonlight",
   "demoArtist": "Zheng Taing",                 // who recorded / is on the demo
   "targetArtists": ["Artist A", "Artist B"],   // who you're pitching to ([] = "Open pitch")
-  "market": "K-pop",                           // K-pop | Western pop
-  "actType": "Girl group",                     // Girl group | Boy group | Solo artist
-  "genre": "Dance pop",                        // Pop | Dance pop | Alt pop | R&B | Ballad | EDM | Pop ballad | Folk | Synth pop
+  "market": ["K-pop", "Western pop"],          // K-pop | Western pop (one or more)
+  "actType": ["Girl group"],                   // Girl group | Boy group | Solo artist (one or more)
+  "genre": ["Dance pop", "EDM"],               // Pop | Dance pop | Alt pop | Dark pop | R&B | Ballad | Pop ballad | EDM | Synth pop | Jersey club | Rap | Folk
+  "key": "D major",
   "bpm": 118,
   "status": "available",                       // available | on-hold | reserved | placed
   "holdUntil": "2026-10-30",                   // on-hold only (shown on the card)
   "placedWith": "Artist C",                    // placed only (shown as "Cut by →")
   "pitchNotes": "Short note shown on the card.",
-  "cover": "covers/moonlight.jpg",             // optional image in private-demos/covers/
+  "cover": "covers/moonlight-ai-demo.jpg",     // optional image in private-demos/covers/
   "privateNotes": "Only for you.",             // NEVER sent to visitors
   "reservation": "Who / terms"                 // NEVER sent to visitors
 }

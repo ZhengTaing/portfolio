@@ -49,9 +49,10 @@ for (const file of readdirSync(dir).sort()) {
     // Pitch fields: fill these in by hand. Anything you've edited is kept.
     demoArtist: 'Zheng Taing',
     targetArtists: [],
-    market: '',
-    actType: '',
-    genre: '',
+    market: [],
+    actType: [],
+    genre: [],
+    key: '',
     bpm: null,
     status: 'available',
     pitchNotes: '',

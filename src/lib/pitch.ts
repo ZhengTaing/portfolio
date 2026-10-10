@@ -11,9 +11,10 @@ export interface Pitch {
   note?: string
   demoArtist?: string
   targetArtists?: string[]
-  market?: string
-  actType?: string
-  genre?: string
+  market?: string | string[]
+  actType?: string | string[]
+  genre?: string | string[]
+  key?: string
   bpm?: number | null
   status: PitchStatus
   pitchNotes?: string
@@ -31,7 +32,7 @@ export const statuses: { id: PitchStatus; label: string; color: string }[] = [
 /** Filter options. The values are exactly what to type in private-demos/demos.json. */
 export const markets = ['K-pop', 'Western pop']
 export const actTypes = ['Girl group', 'Boy group', 'Solo artist']
-export const genres = ['Pop', 'Dance pop', 'Alt pop', 'R&B', 'Ballad', 'EDM', 'Pop ballad', 'Folk', 'Synth pop']
+export const genres = ['Pop', 'Dance pop', 'Alt pop', 'Dark pop', 'R&B', 'Ballad', 'Pop ballad', 'EDM', 'Synth pop', 'Jersey club', 'Rap', 'Folk']
 
 export interface PitchFilters {
   status: PitchStatus[]
@@ -42,15 +43,22 @@ export interface PitchFilters {
 
 export const emptyFilters: PitchFilters = { status: [], market: [], actType: [], genre: [] }
 
-const same = (a?: string, b?: string) => (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase()
+/** A field may hold one value or a list; always work with a list. */
+export const asList = (v?: string | string[]) => (Array.isArray(v) ? v : v ? [v] : []).filter(Boolean)
+
+const norm = (s: string) => s.trim().toLowerCase()
+const hasAny = (selected: string[], values?: string | string[]) => {
+  const have = asList(values).map(norm)
+  return selected.some((s) => have.includes(norm(s)))
+}
 
 /** Within a group any selected value matches; across groups every group must match. */
 export function matches(p: Pitch, f: PitchFilters) {
   return (
     (f.status.length === 0 || f.status.includes(p.status)) &&
-    (f.market.length === 0 || f.market.some((m) => same(m, p.market))) &&
-    (f.actType.length === 0 || f.actType.some((a) => same(a, p.actType))) &&
-    (f.genre.length === 0 || f.genre.some((g) => same(g, p.genre)))
+    (f.market.length === 0 || hasAny(f.market, p.market)) &&
+    (f.actType.length === 0 || hasAny(f.actType, p.actType)) &&
+    (f.genre.length === 0 || hasAny(f.genre, p.genre))
   )
 }
 

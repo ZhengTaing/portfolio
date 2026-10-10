@@ -37,9 +37,12 @@ export interface Demo {
   demoArtist?: string
   /** Who the song is being pitched to. Empty means an open pitch. */
   targetArtists?: string[]
-  market?: string
-  actType?: string
-  genre?: string
+  /** One or more of the filter values, e.g. ["K-pop", "Western pop"]. */
+  market?: string | string[]
+  actType?: string | string[]
+  genre?: string | string[]
+  /** Musical key, e.g. "D major". */
+  key?: string
   bpm?: number
   status?: PitchStatus
   pitchNotes?: string

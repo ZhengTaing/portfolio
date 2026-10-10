@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import {
   actTypes,
+  asList,
   emptyFilters,
   formatHold,
   generatedCover,
@@ -57,7 +58,10 @@ function Targets({ pitch }: { pitch: Pitch }) {
   )
 }
 
-const metaLine = (p: Pitch) => [p.market, p.actType, p.genre, p.bpm ? `${p.bpm} BPM` : ''].filter(Boolean).join(' · ')
+const metaLine = (p: Pitch) =>
+  [asList(p.market).join(' / '), asList(p.actType).join(' / '), asList(p.genre).join(' / '), p.key ?? '', p.bpm ? `${p.bpm} BPM` : '']
+    .filter(Boolean)
+    .join(' · ')
 
 function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: ReactNode }) {
   return (
