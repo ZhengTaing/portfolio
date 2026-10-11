@@ -697,3 +697,12 @@ html[data-cursor-state='native'] .cursor-ring {
     animation: none;
   }
 }
+/* The homepage art slideshow fades softly at both edges so slides glide in and out. */
+.art-glide {
+  mask-image: linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .art-glide {
+    mask-image: none;
+  }
+}

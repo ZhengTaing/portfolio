@@ -75,7 +75,7 @@ export default function HomePage() {
           aside="Photography, painting, life drawing, observational drawing and 3D environments."
         />
         <div data-reveal>
-          <ArtCarousel items={artworks} />
+          <ArtCarousel items={artworks} autoplay />
         </div>
         <Link to="/visual-art" data-magnetic className="btn-outline mt-10">
           View visual art <span aria-hidden="true">→</span>
