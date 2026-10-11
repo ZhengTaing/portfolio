@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { useCoverColor } from '../lib/useCoverColor'
 import { formatTime, usePlaylist } from '../lib/usePlaylist'
 import { QueueButton } from './SongActions'
+import { NextIcon, PlayPauseIcon, PrevIcon } from './icons'
 
 export interface PlayerTrack {
   id: string
@@ -65,7 +66,7 @@ function CompactPlayer({ tracks, listLabel = 'Tracks', hideList = false, inline 
   const progress = duration ? (time / duration) * 100 : 0
 
   return (
-    <div>
+    <div data-cursor="native">
 
       {/* Now playing */}
       <section
@@ -137,7 +138,7 @@ function CompactPlayer({ tracks, listLabel = 'Tracks', hideList = false, inline 
                 aria-label="Previous track"
                 className="border-fg hover:bg-fg hover:text-bg grid size-11 place-items-center border-2 text-lg transition-colors"
               >
-                ⏮
+                <PrevIcon />
               </button>
               <button
                 type="button"
@@ -145,7 +146,7 @@ function CompactPlayer({ tracks, listLabel = 'Tracks', hideList = false, inline 
                 aria-label={playing ? 'Pause' : 'Play'}
                 className="bg-accent text-ink grid size-14 place-items-center text-2xl transition-transform hover:scale-105"
               >
-                {playing ? '❚❚' : '▶'}
+                <PlayPauseIcon playing={playing} />
               </button>
               <button
                 type="button"
@@ -154,7 +155,7 @@ function CompactPlayer({ tracks, listLabel = 'Tracks', hideList = false, inline 
                 aria-label="Next track"
                 className="border-fg hover:bg-fg hover:text-bg grid size-11 place-items-center border-2 text-lg transition-colors disabled:pointer-events-none disabled:opacity-40"
               >
-                ⏭
+                <NextIcon />
               </button>
               <QueueButton track={track} label="Music" />
               <label className="label ml-auto hidden items-center gap-2 sm:flex">
@@ -191,12 +192,12 @@ function CompactPlayer({ tracks, listLabel = 'Tracks', hideList = false, inline 
               >
                 <span className="label tabular-nums">
                   {active && playing ? (
-                    <span aria-hidden="true">▶</span>
+                    <span aria-hidden="true">▶︎</span>
                   ) : (
                     <>
                       <span className="group-hover:hidden">{String(i + 1).padStart(2, '0')}</span>
                       <span aria-hidden="true" className="hidden group-hover:inline">
-                        ▶
+                        ▶︎
                       </span>
                     </>
                   )}
@@ -262,6 +263,7 @@ function ShowcasePlayer({ tracks, listLabel = 'Tracks', heading, backdrop = true
 
   return (
     <div
+      data-cursor="native"
       className="p-5 sm:p-8"
       style={{ '--room-accent': accent, '--room-line': 'rgb(255 255 255 / 0.16)' } as CSSProperties}
     >
@@ -311,13 +313,13 @@ function ShowcasePlayer({ tracks, listLabel = 'Tracks', heading, backdrop = true
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <button type="button" onClick={p.prev} aria-label="Previous track" className="border-fg hover:bg-fg hover:text-bg grid size-10 place-items-center border-2 transition-colors">
-                ⏮
+                <PrevIcon />
               </button>
               <button type="button" onClick={p.toggle} aria-label={p.playing ? 'Pause' : 'Play'} className="bg-accent text-ink grid size-12 place-items-center text-xl transition-transform hover:scale-105">
-                {p.playing ? '❚❚' : '▶'}
+                <PlayPauseIcon playing={p.playing} />
               </button>
               <button type="button" onClick={p.next} disabled={!p.hasNext} aria-label="Next track" className="border-fg hover:bg-fg hover:text-bg grid size-10 place-items-center border-2 transition-colors disabled:pointer-events-none disabled:opacity-40">
-                ⏭
+                <NextIcon />
               </button>
               <button type="button" aria-pressed={p.shuffle} onClick={() => p.setShuffle(!p.shuffle)} className={`label ml-1 px-1 uppercase ${p.shuffle ? 'text-accent' : 'text-white/60 hover:text-white'}`}>
                 Shuffle {p.shuffle ? 'on' : 'off'}
@@ -349,7 +351,7 @@ function ShowcasePlayer({ tracks, listLabel = 'Tracks', heading, backdrop = true
                     aria-label={`${current && p.playing ? 'Pause' : 'Play'} ${t.title}`}
                     className={`grid min-w-0 flex-1 grid-cols-[1.75rem_2.25rem_1fr_auto] items-center gap-3 py-1.5 pl-4 text-left ${current ? 'text-accent' : ''}`}
                   >
-                    <span className="label tabular-nums text-white/60">{current && p.playing ? <span className="text-accent">▶</span> : String(i + 1).padStart(2, '0')}</span>
+                    <span className="label tabular-nums text-white/60">{current && p.playing ? <span className="text-accent">▶︎</span> : String(i + 1).padStart(2, '0')}</span>
                     <span className="size-9 overflow-hidden bg-black/30">
                       {t.artwork && <img src={t.artwork.src} alt="" loading="lazy" className="h-full w-full object-cover" />}
                     </span>

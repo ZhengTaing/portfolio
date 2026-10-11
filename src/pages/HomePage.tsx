@@ -35,7 +35,7 @@ export default function HomePage() {
             <ProjectRow key={p.id} project={p} />
           ))}
         </div>
-        <Link to="/projects" className="btn-outline mt-10">
+        <Link to="/projects" data-magnetic className="btn-outline mt-10">
           All projects <span aria-hidden="true">→</span>
         </Link>
       </section>
@@ -53,7 +53,7 @@ export default function HomePage() {
             <p className="font-display mb-10 text-[clamp(1.375rem,2.4vw,2.125rem)] leading-tight font-semibold tracking-[-0.01em]">
               Singer-songwriter, releasing my own music and writing songs for other artists.
             </p>
-            <Link to="/music" className="btn-outline">
+            <Link to="/music" data-magnetic className="btn-outline">
               All music &amp; credits <span aria-hidden="true">→</span>
             </Link>
           </div>
@@ -77,7 +77,7 @@ export default function HomePage() {
         <div data-reveal>
           <ArtCarousel items={artworks} />
         </div>
-        <Link to="/visual-art" className="btn-outline mt-10">
+        <Link to="/visual-art" data-magnetic className="btn-outline mt-10">
           View visual art <span aria-hidden="true">→</span>
         </Link>
       </section>

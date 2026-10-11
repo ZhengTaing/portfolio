@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { Artwork } from '../types/content'
+import { useFlip } from '../lib/motion'
 import { ImageLightbox } from './ImageLightbox'
 import { SmartImage } from './ui'
 
@@ -27,12 +28,14 @@ export function PhotographyGallery({ items, openId, onOpenChange }: Props) {
   }, [openId])
 
   const close = () => onOpenChange(null)
+  const listRef = useRef<HTMLUListElement>(null)
+  useFlip(listRef, items.map((a) => a.id).join())
 
   return (
     <>
-      <ul data-reveal-stagger className="columns-1 gap-4 xs:columns-2 lg:columns-3">
+      <ul ref={listRef} data-reveal-stagger className="columns-1 gap-4 xs:columns-2 lg:columns-3">
         {items.map((a, i) => (
-          <li key={a.id} className="mb-4 break-inside-avoid">
+          <li key={a.id} data-flip={a.id} className="mb-4 break-inside-avoid">
             <button
               type="button"
               ref={(el) => {
@@ -40,7 +43,8 @@ export function PhotographyGallery({ items, openId, onOpenChange }: Props) {
                 else triggers.current.delete(a.id)
               }}
               onClick={() => onOpenChange(a.id)}
-              className="group block w-full text-left"
+              data-cursor-label="VIEW"
+              className="group card-lift block w-full text-left"
               aria-label={`Open ${a.title} in viewer`}
             >
               <span className="bg-surface block overflow-hidden">
@@ -48,7 +52,7 @@ export function PhotographyGallery({ items, openId, onOpenChange }: Props) {
                   image={{ src: a.thumbnailUrl, alt: a.altText, width: a.width, height: a.height }}
                   eager={i < 3}
                   sizes="(min-width: 1024px) 33vw, (min-width: 480px) 50vw, 100vw"
-                  className="transition-transform duration-500 group-hover:scale-[1.03]"
+                  className="media-zoom"
                 />
               </span>
               <span className="label text-muted mt-2 flex justify-between gap-3">

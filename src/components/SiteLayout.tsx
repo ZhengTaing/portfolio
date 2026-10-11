@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom'
 import { PlayerProvider, usePlayer } from '../lib/player'
 import { themeForPath } from '../lib/site'
 import { useScrollReveal } from '../lib/useScrollReveal'
+import { CustomCursor } from './CustomCursor'
 import { Footer } from './Footer'
 import { Navigation } from './Navigation'
 import { NowPlayingBar } from './NowPlayingBar'
@@ -60,7 +61,7 @@ export function SiteLayout() {
       <div ref={shellRef} className="relative md:pl-14">
         <Navigation overlay={pathname === '/'} />
         <main id="main" ref={mainRef} tabIndex={-1} className="outline-none">
-          <div key={pathname} className="motion-safe:animate-[fade_.45s_ease-out_both]">
+          <div key={pathname} className="page-enter">
             <Outlet />
           </div>
         </main>
@@ -68,6 +69,7 @@ export function SiteLayout() {
         <PlayerSpacer />
       </div>
       <NowPlayingBar />
+      <CustomCursor />
     </div>
     </PlayerProvider>
   )

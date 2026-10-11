@@ -13,10 +13,12 @@ import {
   type PitchFilters,
 } from '../lib/pitch'
 import { useFavorites } from '../lib/favorites'
+import { useFlip } from '../lib/motion'
 import { useCoverColor } from '../lib/useCoverColor'
 import { formatTime, usePlaylist } from '../lib/usePlaylist'
 import { HeartButton, QueueButton } from './SongActions'
 import { Ticker } from './Ticker'
+import { NextIcon, PlayPauseIcon, PrevIcon } from './icons'
 
 function Cover({ pitch, className = '' }: { pitch: Pitch; className?: string }) {
   if (pitch.coverUrl) {
@@ -40,14 +42,14 @@ function StatusBadge({ pitch, className = '' }: { pitch: Pitch; className?: stri
   )
 }
 
-/** "For → A, B" / "Cut by → X" / "Open pitch" */
+/** "Style : A, B" / "Cut by → X" / "Open pitch" */
 function Targets({ pitch }: { pitch: Pitch }) {
   const placed = pitch.status === 'placed'
   const names = placed && pitch.placedWith ? [pitch.placedWith] : (pitch.targetArtists ?? []).filter(Boolean)
   const shown = names.slice(0, 2)
   return (
     <div className="label flex flex-wrap items-center gap-1.5">
-      <span className="text-accent">{placed ? 'Cut by →' : 'For →'}</span>
+      <span className="text-accent">{placed ? 'Cut by →' : 'Style :'}</span>
       {shown.length === 0 ? (
         <span className="border-line border px-1.5">Open pitch</span>
       ) : (
@@ -262,6 +264,8 @@ export function PitchBoard({ pitches, toolbarStart }: { pitches: Pitch[]; toolba
   const progress = p.duration ? (p.time / p.duration) * 100 : 0
   const queue = visible
   const accent = useCoverColor(track?.coverUrl)
+  const listRef = useRef<HTMLUListElement>(null)
+  useFlip(listRef, visible.map((x) => x.id).join())
 
   return (
     <div style={{ '--room-accent': accent, '--room-line': 'rgb(255 255 255 / 0.16)' } as CSSProperties}>
@@ -299,6 +303,7 @@ export function PitchBoard({ pitches, toolbarStart }: { pitches: Pitch[]; toolba
       {track && (
         <section
           aria-label="Player"
+          data-cursor="native"
           className="relative z-20 mb-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(17rem,22rem)] lg:items-end lg:gap-10"
         >
           {/* Now playing */}
@@ -354,7 +359,7 @@ export function PitchBoard({ pitches, toolbarStart }: { pitches: Pitch[]; toolba
                   aria-label="Previous track"
                   className="border-fg hover:bg-fg hover:text-bg grid size-10 place-items-center border-2 transition-colors"
                 >
-                  ⏮
+                  <PrevIcon />
                 </button>
                 <button
                   type="button"
@@ -362,7 +367,7 @@ export function PitchBoard({ pitches, toolbarStart }: { pitches: Pitch[]; toolba
                   aria-label={p.playing ? 'Pause' : 'Play'}
                   className="bg-accent text-ink grid size-12 place-items-center text-xl transition-transform hover:scale-105"
                 >
-                  {p.playing ? '❚❚' : '▶'}
+                  <PlayPauseIcon playing={p.playing} />
                 </button>
                 <button
                   type="button"
@@ -371,7 +376,7 @@ export function PitchBoard({ pitches, toolbarStart }: { pitches: Pitch[]; toolba
                   aria-label="Next track"
                   className="border-fg hover:bg-fg hover:text-bg grid size-10 place-items-center border-2 transition-colors disabled:pointer-events-none disabled:opacity-40"
                 >
-                  ⏭
+                  <NextIcon />
                 </button>
                 <button
                   type="button"
@@ -410,7 +415,7 @@ export function PitchBoard({ pitches, toolbarStart }: { pitches: Pitch[]; toolba
                       className={`grid min-w-0 flex-1 grid-cols-[1.75rem_2.25rem_1fr_auto] items-center gap-3 py-1.5 pl-4 text-left ${current ? 'text-accent' : ''}`}
                     >
                       <span className="label text-muted tabular-nums">
-                        {current && p.playing ? <span className="text-accent">▶</span> : String(i + 1).padStart(2, '0')}
+                        {current && p.playing ? <span className="text-accent">▶︎</span> : String(i + 1).padStart(2, '0')}
                       </span>
                       <span className="size-9 overflow-hidden">
                         <Cover pitch={q} />
@@ -453,25 +458,28 @@ export function PitchBoard({ pitches, toolbarStart }: { pitches: Pitch[]; toolba
         </div>
         )
       ) : (
-        <ul data-reveal-stagger className="grid gap-3.5 md:grid-cols-2" aria-label="Song pitches">
+        <ul ref={listRef} data-reveal-stagger className="grid gap-3.5 md:grid-cols-2" aria-label="Song pitches">
           {visible.map((pitch) => {
             const current = track?.id === pitch.id
             const placed = pitch.status === 'placed'
             const meta = metaLine(pitch)
             return (
-              <li key={pitch.id}>
+              <li key={pitch.id} data-flip={pitch.id} className="group card-lift">
                 <article
                   className={`relative grid h-full grid-cols-[6.5rem_1fr] border bg-black/40 backdrop-blur-sm transition-colors sm:grid-cols-[8.25rem_1fr] ${current ? 'border-accent outline-accent outline-1' : 'border-white/15 hover:bg-black/55'}`}
                 >
-                  <div className="relative min-h-[8.25rem]">
-                    <Cover pitch={pitch} className={`absolute inset-0 ${placed ? 'brightness-[0.6] grayscale' : ''}`} />
+                  <div data-cursor-label={current && p.playing ? 'PAUSE' : 'PLAY'} className="relative min-h-[8.25rem] overflow-hidden">
+                    <Cover pitch={pitch} className={`media-zoom absolute inset-0 ${placed ? 'brightness-[0.6] grayscale' : ''}`} />
+                    {/* The whole cover plays the song; the badge in the corner shows the state. */}
                     <button
                       type="button"
                       onClick={() => p.playTrack(pitch.id)}
                       aria-label={`${current && p.playing ? 'Pause' : 'Play'} ${pitch.title}`}
-                      className="bg-accent text-ink absolute bottom-2 left-2 grid size-9 place-items-center text-sm transition-transform hover:scale-110"
+                      className="absolute inset-0"
                     >
-                      {current && p.playing ? '❚❚' : '▶'}
+                      <span className="bg-accent text-ink absolute bottom-2 left-2 grid size-9 place-items-center text-sm transition-transform group-hover:scale-110">
+                        <PlayPauseIcon playing={current && p.playing} />
+                      </span>
                     </button>
                   </div>
                   <div className="flex min-w-0 flex-col gap-1.5 p-3 sm:p-3.5">

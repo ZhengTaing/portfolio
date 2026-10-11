@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import { useEffect, useRef, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { profile } from '../content/profile'
 import { ContactLinks } from './ContactLinks'
@@ -17,14 +17,36 @@ const disciplines = [
  */
 export function HeroSection() {
   const photo = profile.feature
+  const heroRef = useRef<HTMLElement>(null)
+
+  // The ambient drift only runs while the hero is on screen and the tab is visible.
+  useEffect(() => {
+    const hero = heroRef.current
+    if (!hero || typeof IntersectionObserver === 'undefined') return
+    let onScreen = true
+    const update = () => hero.classList.toggle('ambient-paused', !onScreen || document.hidden)
+    const io = new IntersectionObserver(([entry]) => {
+      onScreen = entry.isIntersecting
+      update()
+    })
+    io.observe(hero)
+    document.addEventListener('visibilitychange', update)
+    return () => {
+      io.disconnect()
+      document.removeEventListener('visibilitychange', update)
+    }
+  }, [])
+
   return (
     <>
       <section
+        ref={heroRef}
         aria-labelledby="hero-title"
         data-theme="ink"
         className="text-fg relative isolate flex h-[100svh] min-h-[32rem] flex-col justify-end overflow-hidden bg-[#1a140e] px-4 pb-8 sm:px-8 sm:pb-10"
       >
         <div className="absolute inset-0 -z-20 overflow-hidden motion-safe:animate-[ken-burns_2.6s_cubic-bezier(0.2,0.7,0.2,1)_both]">
+        <div className="hero-drift h-full w-full">
         <img
           src={photo.src}
           srcSet={`${photo.srcSmall} 1200w, ${photo.src} 2304w`}
@@ -37,6 +59,8 @@ export function HeroSection() {
           className="h-full w-full object-cover object-[60%_50%] md:origin-[0%_60%] md:scale-[1.14] md:object-[50%_50%]"
         />
         </div>
+        </div>
+        <div aria-hidden="true" className="hero-light pointer-events-none absolute inset-0 -z-10" />
         {/* Light touch: a soft shade at the top for the menu and at the bottom-left for the headline. */}
         <div
           aria-hidden="true"
@@ -92,7 +116,7 @@ export function HeroSection() {
                   </span>
                   <span className="label group-hover:text-accent transition-colors">
                     <span className="hidden sm:inline">{d.cta} </span>
-                    <span aria-hidden="true">→</span>
+                    <span aria-hidden="true" className="arrow">→</span>
                   </span>
                 </Link>
               </li>

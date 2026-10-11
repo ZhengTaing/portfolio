@@ -20,6 +20,23 @@
   --breakpoint-xs: 30rem;
 }
 
+/* Motion system: every transition on the site uses these. */
+:root {
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: var(--ease-out);
+  --dur-quick: 180ms; /* color, underline, press */
+  --dur-base: 420ms; /* settle, page and filter changes */
+  --dur-spring: 600ms; /* hover lift, arrows */
+  --dur-slow: 900ms; /* reveals, image zoom */
+}
+/* A gentle spring (about 4% overshoot). Older browsers keep --ease-out. */
+@supports (transition-timing-function: linear(0, 1)) {
+  :root {
+    --ease-spring: linear(0, 0.06 2.2%, 0.23 5%, 0.5 9.4%, 0.76 14.8%, 0.92 20.3%, 1.01 26.6%, 1.035 32%, 1.04 36.5%, 1.03 43%, 1.01 52%, 0.998 64%, 1);
+  }
+}
+
 @theme inline {
   --color-bg: var(--room-bg);
   --color-fg: var(--room-fg);
@@ -136,14 +153,27 @@
     text-underline-offset: 6px;
   }
   .btn-outline {
-    @apply inline-flex items-center justify-center gap-2 border-2 border-current px-4 py-3 font-bold uppercase transition-colors;
+    @apply inline-flex items-center justify-center gap-2 border-2 border-current px-4 py-3 font-bold uppercase;
+    transition:
+      transform var(--dur-spring) var(--ease-spring),
+      background-color var(--dur-quick),
+      color var(--dur-quick);
   }
   .btn-outline:active {
     transform: scale(0.98);
+    transition-duration: var(--dur-quick);
   }
   .btn-outline:hover {
     background: var(--room-fg);
     color: var(--room-bg);
+  }
+  @media (hover: hover) {
+    .btn-outline:not([data-magnetic]):hover {
+      transform: translateY(-3px);
+    }
+    .btn-outline:not([data-magnetic]):hover:active {
+      transform: translateY(-1px) scale(0.98);
+    }
   }
   .skip-link {
     @apply sr-only;
@@ -356,5 +386,260 @@
   .ticker-fade-end {
     overflow-x: auto;
     mask-image: none;
+  }
+}
+
+/* ---- Motion: links, buttons, cards ------------------------------------------
+   Values come from the motion tokens at the top of this file. Hover effects only
+   apply to devices that can hover; touch gets a short press instead. */
+
+/* Underline that draws in from the left and leaves to the right. */
+.link-draw {
+  text-decoration: none;
+  background: linear-gradient(currentColor, currentColor) no-repeat right bottom / 0% 1px;
+  padding-bottom: 2px;
+  transition: background-size var(--dur-base) var(--ease-out);
+}
+.link-draw:focus-visible,
+.group:focus-visible .link-draw {
+  background-size: 100% 1px;
+  background-position: left bottom;
+}
+
+/* Arrows nudge forward. "→" moves right, "↗" moves up and right. */
+.arrow,
+.arrow-ne,
+.btn-outline > [aria-hidden='true']:last-child {
+  display: inline-block;
+  transition: transform var(--dur-spring) var(--ease-spring);
+}
+
+@media (hover: hover) {
+  .link-draw:hover,
+  .group:hover .link-draw {
+    background-size: 100% 1px;
+    background-position: left bottom;
+  }
+  a:hover > .arrow,
+  button:hover > .arrow,
+  .group:hover .arrow,
+  .btn-outline:hover > [aria-hidden='true']:last-child,
+  .group:hover .btn-outline > [aria-hidden='true']:last-child {
+    transform: translateX(4px);
+  }
+  a:hover > .arrow-ne,
+  .group:hover .arrow-ne,
+  .btn-outline:hover > [aria-hidden='true'].arrow-ne:last-child,
+  .group:hover .btn-outline > [aria-hidden='true'].arrow-ne:last-child {
+    transform: translate(3px, -3px);
+  }
+
+  /* Cards lift on a spring and settle back smoothly. */
+  .card-lift:hover,
+  .card-lift:focus-within {
+    transform: translateY(-6px);
+    transition-timing-function: var(--ease-spring);
+    transition-duration: var(--dur-spring);
+  }
+  .group:hover .media-zoom {
+    transform: scale(1.045);
+  }
+}
+.card-lift {
+  transition: transform var(--dur-base) var(--ease-out);
+}
+.card-lift:active {
+  transform: scale(0.985);
+  transition-duration: var(--dur-quick);
+}
+.media-zoom {
+  transition: transform var(--dur-slow) var(--ease-out);
+}
+
+/* Page change: the new page fades up into place. */
+.page-enter {
+  animation: rise-small var(--dur-base) var(--ease-out) both;
+}
+@keyframes rise-small {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---- Home hero ambient motion ------------------------------------------------
+   A slow drift on the photo and a soft light that breathes. Paused off-screen. */
+.hero-drift {
+  animation: drift 38s var(--ease-in-out) 2.6s infinite alternate;
+}
+.hero-light {
+  background: radial-gradient(40% 50% at 30% 30%, rgb(255 236 210 / 0.5), transparent 70%);
+  mix-blend-mode: soft-light;
+  animation: breathe 14s var(--ease-in-out) infinite alternate;
+}
+.ambient-paused .hero-drift,
+.ambient-paused .hero-light {
+  animation-play-state: paused;
+}
+@keyframes drift {
+  from {
+    transform: none;
+  }
+  to {
+    transform: translate3d(-1.6%, -1%, 0) scale(1.04);
+  }
+}
+@keyframes breathe {
+  from {
+    opacity: 0.35;
+    transform: none;
+  }
+  to {
+    opacity: 0.8;
+    transform: translate3d(8%, 4%, 0);
+  }
+}
+
+/* ---- Custom cursor (mouse and trackpad only, see CustomCursor.tsx) ----------- */
+html.has-cursor,
+html.has-cursor * {
+  cursor: none !important;
+}
+html.has-cursor [data-cursor='native'],
+html.has-cursor [data-cursor='native'] *,
+html.has-cursor input,
+html.has-cursor textarea,
+html.has-cursor select {
+  cursor: auto !important;
+}
+html.has-cursor [data-cursor='native'] :is(a, button, label, input[type='range']),
+html.has-cursor input[type='range'] {
+  cursor: pointer !important;
+}
+.cursor-dot,
+.cursor-ring {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+  pointer-events: none;
+  mix-blend-mode: difference;
+  opacity: 0;
+  transition: opacity 0.2s;
+  will-change: transform;
+}
+html.cursor-on .cursor-dot,
+html.cursor-on .cursor-ring {
+  opacity: 1;
+}
+.cursor-dot i {
+  display: block;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: #fff;
+  transition:
+    transform 0.2s var(--ease-out),
+    opacity 0.2s;
+}
+.cursor-ring i {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  transform: translate(-50%, -50%);
+  border: 1.5px solid #fff;
+  border-radius: 999px;
+  transition:
+    width var(--dur-base) var(--ease-spring),
+    height var(--dur-base) var(--ease-spring),
+    background-color 0.25s,
+    border-color 0.25s;
+}
+.cursor-ring b {
+  font: 700 0.625rem/1 var(--font-mono);
+  letter-spacing: 0.12em;
+  color: var(--color-ink);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+html[data-cursor-state='hover'] .cursor-ring i {
+  width: 52px;
+  height: 52px;
+}
+html[data-cursor-state='hover'] .cursor-dot i {
+  transform: scale(0.5);
+}
+html[data-cursor-state='label'] .cursor-ring {
+  mix-blend-mode: normal;
+}
+html[data-cursor-state='label'] .cursor-ring i {
+  width: 76px;
+  height: 76px;
+  background: var(--color-signal);
+  border-color: var(--color-signal);
+}
+html[data-cursor-state='label'] .cursor-ring b {
+  opacity: 1;
+  transition-delay: 0.08s;
+}
+html[data-cursor-state='label'] .cursor-dot i {
+  opacity: 0;
+}
+html[data-cursor-state='native'] .cursor-dot,
+html[data-cursor-state='native'] .cursor-ring {
+  opacity: 0 !important;
+}
+[data-magnetic] {
+  transition:
+    transform var(--dur-base) var(--ease-out),
+    background-color var(--dur-quick),
+    color var(--dur-quick);
+}
+.click-ripple {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9998;
+  pointer-events: none;
+}
+.click-ripple i {
+  position: absolute;
+  top: -40px;
+  left: -40px;
+  width: 80px;
+  height: 80px;
+  border: 1px solid var(--color-signal);
+  border-radius: 50%;
+  opacity: 0.55;
+  transform: scale(0.1);
+  animation: ripple 550ms var(--ease-out) forwards;
+}
+@keyframes ripple {
+  to {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-drift,
+  .hero-light {
+    animation: none;
+  }
+  .card-lift:hover,
+  .card-lift:focus-within,
+  .group:hover .media-zoom,
+  .btn-outline:hover,
+  [data-magnetic] {
+    transform: none !important;
   }
 }

@@ -65,11 +65,11 @@ export function ArtCarousel({ items, label = 'Featured artwork' }: { items: Artw
                   height={a.height}
                   loading={i < 3 ? 'eager' : 'lazy'}
                   decoding="async"
-                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                  className="media-zoom h-full w-full object-cover"
                 />
               </div>
               <span className="label mt-2 flex w-0 min-w-full justify-between gap-3">
-                <span className="truncate group-hover:underline">{a.title}</span>
+                <span className="truncate"><span className="link-draw">{a.title}</span></span>
                 <span className="text-muted shrink-0">{categoryLabel(a)}</span>
               </span>
             </Link>

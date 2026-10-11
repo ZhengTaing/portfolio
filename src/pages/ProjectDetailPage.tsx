@@ -73,12 +73,12 @@ export default function ProjectDetailPage() {
         <div className="mt-8 flex flex-wrap gap-3">
           {project.repositoryUrl && (
             <ExternalLink href={project.repositoryUrl} className="btn-outline">
-              View repository <span aria-hidden="true">↗</span>
+              View repository <span aria-hidden="true" className="arrow-ne">↗</span>
             </ExternalLink>
           )}
           {project.demoUrl && (
             <ExternalLink href={project.demoUrl} className="btn-outline">
-              {project.demoLabel ?? 'Live demo'} <span aria-hidden="true">↗</span>
+              {project.demoLabel ?? 'Live demo'} <span aria-hidden="true" className="arrow-ne">↗</span>
             </ExternalLink>
           )}
           {!project.repositoryUrl && !project.demoUrl && (

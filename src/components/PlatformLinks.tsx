@@ -11,7 +11,7 @@ export function PlatformLinks({ release, className = '' }: { release: MusicRelea
       {entries.map(([platform, url]) => (
         <li key={platform}>
           <ExternalLink href={url} className="btn-outline px-3 py-2 text-[0.6875rem]">
-            {platformLabels[platform] ?? platform} <span aria-hidden="true">↗</span>
+            {platformLabels[platform] ?? platform} <span aria-hidden="true" className="arrow-ne">↗</span>
           </ExternalLink>
         </li>
       ))}

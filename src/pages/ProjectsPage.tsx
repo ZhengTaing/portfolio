@@ -1,8 +1,10 @@
+import { useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ProjectCard } from '../components/ProjectCard'
 import { SectionHeader } from '../components/ui'
 import { projectCategories, projects } from '../content/projects'
 import type { ProjectCategory } from '../types/content'
+import { useFlip } from '../lib/motion'
 import { usePageMeta } from '../lib/usePageMeta'
 
 export default function ProjectsPage() {
@@ -15,6 +17,8 @@ export default function ProjectsPage() {
   const active = params.get('category') as ProjectCategory | null
   const validActive = projectCategories.some((c) => c.id === active) ? active : null
   const visible = validActive ? projects.filter((p) => p.category === validActive) : projects
+  const listRef = useRef<HTMLUListElement>(null)
+  useFlip(listRef, visible.map((p) => p.id).join())
   // Only offer filters that actually have projects behind them.
   const categories = projectCategories.filter((c) => projects.some((p) => p.category === c.id))
 
@@ -62,9 +66,9 @@ export default function ProjectsPage() {
       </p>
 
       {visible.length > 0 ? (
-        <ul data-reveal-stagger className="grid gap-x-6 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
+        <ul ref={listRef} data-reveal-stagger className="grid gap-x-6 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
           {visible.map((p) => (
-            <li key={p.id} className="flex">
+            <li key={p.id} data-flip={p.id} className="flex">
               <ProjectCard project={p} />
             </li>
           ))}

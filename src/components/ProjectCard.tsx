@@ -5,12 +5,12 @@ import { SmartImage, StatusBadge, Tag } from './ui'
 /** Grid card used on the Projects index. The whole card links to its detail page. */
 export function ProjectCard({ project }: { project: Project }) {
   return (
-    <article className="group border-line relative flex w-full flex-col border-t pt-4">
+    <article data-cursor-label="VIEW" className="group card-lift bg-bg border-line relative flex w-full flex-col border-t pt-4">
       <div className="bg-surface overflow-hidden">
         <SmartImage
           image={project.thumbnail}
           sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-          className="transition-transform duration-500 group-hover:scale-[1.03]"
+          className="media-zoom"
         />
       </div>
       <div className="mt-4 flex items-start justify-between gap-4">
@@ -35,7 +35,7 @@ export function ProjectCard({ project }: { project: Project }) {
 /** Compact editorial row used for featured projects on the home page. */
 export function ProjectRow({ project }: { project: Project }) {
   return (
-    <article className="group border-line relative grid gap-4 border-t py-8 md:grid-cols-[4rem_1fr_16rem_auto] md:items-center md:gap-6">
+    <article data-cursor-label="VIEW" className="group border-line relative grid gap-4 border-t py-8 md:grid-cols-[4rem_1fr_16rem_auto] md:items-center md:gap-6">
       <span className="text-muted label">{project.year}</span>
       <div>
         <h3 className="font-display group-hover:text-accent text-[clamp(2rem,4.5vw,4rem)] leading-[0.9] font-extrabold tracking-[-0.035em] transition-colors">
@@ -52,7 +52,7 @@ export function ProjectRow({ project }: { project: Project }) {
         ))}
       </div>
       <span className="btn-outline pointer-events-none justify-self-start md:justify-self-end" aria-hidden="true">
-        Case study →
+        Case study <span className="arrow">→</span>
       </span>
     </article>
   )

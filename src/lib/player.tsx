@@ -75,6 +75,8 @@ interface PlayerApi extends PlayerState {
   /** Drop queued songs that match, e.g. demos after locking the page. */
   removeFromQueueWhere: (test: (t: PlaylistTrack) => boolean) => void
   isQueued: (id: string) => boolean
+  /** The site-wide <audio> element (for the live equalizer). */
+  audioElement: () => HTMLAudioElement | null
   /** Stop and clear the player (hides the now-playing bar). */
   stop: () => void
   hasNext: boolean
@@ -114,6 +116,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   /** Page a queued song was added from, while it plays. */
   const [queuedFrom, setQueuedFrom] = useState<string | undefined>()
   const queueKey = useRef(0)
+  const audioElement = useCallback(() => audioRef.current, [])
 
   const index = current ? queue.findIndex((t) => t.id === (fromQueue ? anchorId : current.id)) : -1
 
@@ -262,6 +265,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       },
       removeFromQueueWhere: (test) => setUpNext((q) => q.filter((x) => !test(x.track))),
       isQueued: (id) => upNext.some((x) => x.track.id === id),
+      audioElement,
       stop: () => {
         audioRef.current?.pause()
         autoplay.current = false
@@ -273,7 +277,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setPlaying(false)
       },
     }
-  }, [queue, current, playing, time, duration, volume, shuffle, error, sourcePath, upNext, laterInPlaylist, lastAdded, hasNext, hasPrev, index, fromQueue, queuedFrom, choose, advance])
+  }, [queue, current, playing, time, duration, volume, shuffle, error, sourcePath, upNext, laterInPlaylist, lastAdded, hasNext, hasPrev, index, fromQueue, queuedFrom, choose, advance, audioElement])
 
   return (
     <PlayerContext.Provider value={api}>

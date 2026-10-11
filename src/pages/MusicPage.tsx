@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { CoverBackdrop, MediaPlayer, type PlayerTrack } from '../components/MediaPlayer'
 import { PlatformLinks } from '../components/PlatformLinks'
 import { ContactLinks } from '../components/ContactLinks'
+import { LockIcon } from '../components/icons'
 import { MusicReleaseCard } from '../components/MusicReleaseCard'
 import { ExternalLink, PlaceholderNotice, SectionHeader, SmartImage } from '../components/ui'
 import { profile } from '../content/profile'
@@ -58,7 +59,7 @@ export default function MusicPage() {
               <div>
                 <p className="label">Latest · {formatLabels[lead.format]}</p>
                 <h2 id="lead-title" className="font-display mt-1 text-3xl leading-none font-extrabold tracking-[-0.02em]">
-                  <Link to={`/music/${lead.slug}`} className="hover:underline">
+                  <Link to={`/music/${lead.slug}`} className="link-draw">
                     {lead.title}
                   </Link>
                 </h2>
@@ -154,12 +155,12 @@ export default function MusicPage() {
           className="group text-fg grid gap-6 border border-white/15 bg-black/40 p-6 backdrop-blur-sm transition-colors hover:bg-black/55 sm:grid-cols-[auto_1fr_auto] sm:items-center sm:p-8"
         >
           <span aria-hidden="true" className="border-signal text-signal grid size-14 place-items-center border-2 text-2xl">
-            ⌗
+            <LockIcon />
           </span>
           <span>
-            <span className="font-display block text-2xl leading-none font-extrabold tracking-[-0.02em] uppercase group-hover:underline">
+            <span className="font-display block text-2xl leading-none font-extrabold tracking-[-0.02em] uppercase"><span className="link-draw">
               Demos &amp; works in progress
-            </span>
+            </span></span>
             <span className="label mt-2 block text-[#c9c9c9]">Password protected · For collaborators</span>
           </span>
           <span className="btn-outline justify-self-start">

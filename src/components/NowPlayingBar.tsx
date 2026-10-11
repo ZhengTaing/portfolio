@@ -3,12 +3,12 @@ import { Link } from 'react-router-dom'
 import { usePlayer, type PlaylistTrack } from '../lib/player'
 import { useCoverColor } from '../lib/useCoverColor'
 import { formatTime } from '../lib/usePlaylist'
+import { LiveEqualizer } from './LiveEqualizer'
 import { HeartButton } from './SongActions'
+import { NextIcon, PlayPauseIcon, PrevIcon } from './icons'
 
 const imageOf = (t?: PlaylistTrack) => t?.artwork?.src ?? t?.coverUrl
 const subtitleOf = (t?: PlaylistTrack) => t?.subtitle ?? (t?.demoArtist ? `Demo · ${t.demoArtist}` : 'Zheng Taing')
-
-const EQ = [55, 90, 35, 75, 50]
 
 /**
  * Site-wide "now playing" bar. Appears once anything is played and stays
@@ -53,6 +53,7 @@ export function NowPlayingBar() {
   return (
     <section
       aria-label="Now playing"
+      data-cursor="native"
       className="fixed inset-x-0 bottom-0 z-40 text-white motion-safe:animate-[rise_.4s_ease-out_both] md:left-14"
       style={{ '--room-accent': accent, '--room-line': 'rgb(255 255 255 / 0.2)' } as CSSProperties}
     >
@@ -115,15 +116,7 @@ export function NowPlayingBar() {
               {track.title}
             </Link>
             <p className="label mt-0.5 flex items-center gap-2 truncate text-white/65">
-              <span aria-hidden="true" className="flex h-2.5 items-end gap-[2px]">
-                {EQ.map((h, i) => (
-                  <i
-                    key={i}
-                    className={`bg-accent w-[2px] origin-bottom ${p.playing ? 'motion-safe:animate-[eq_.9s_ease-in-out_infinite_alternate]' : 'opacity-50'}`}
-                    style={{ height: `${h}%`, animationDelay: `${i * -0.17}s` }}
-                  />
-                ))}
-              </span>
+              <LiveEqualizer audio={p.audioElement} playing={p.playing} src={track.audioUrl} className="h-3 w-7 shrink-0" />
               <span className="truncate">{subtitleOf(track)}</span>
             </p>
           </div>
@@ -136,9 +129,9 @@ export function NowPlayingBar() {
             type="button"
             onClick={p.prev}
             aria-label="Previous track"
-            className="hidden size-9 place-items-center text-white/80 hover:text-white sm:grid"
+            className="grid size-8 place-items-center text-white/80 hover:text-white sm:size-9"
           >
-            ⏮
+            <PrevIcon />
           </button>
           <button
             type="button"
@@ -146,7 +139,7 @@ export function NowPlayingBar() {
             aria-label={p.playing ? 'Pause' : 'Play'}
             className="bg-accent text-ink grid size-11 place-items-center text-lg transition-transform hover:scale-105"
           >
-            {p.playing ? '❚❚' : '▶'}
+            <PlayPauseIcon playing={p.playing} />
           </button>
           <button
             type="button"
@@ -155,7 +148,7 @@ export function NowPlayingBar() {
             aria-label="Next track"
             className="grid size-9 place-items-center text-white/80 hover:text-white disabled:opacity-30"
           >
-            ⏭
+            <NextIcon />
           </button>
           <button
             type="button"
