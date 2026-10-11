@@ -16,6 +16,8 @@ export function useCoverColor(src: string | undefined, fallback = '#ff6a4a') {
     let cancelled = false
     const img = new Image()
     img.decoding = 'async'
+    // Demo covers may be served from cloud storage; ask for CORS so the colors can be read.
+    img.crossOrigin = 'anonymous'
     img.onload = () => {
       try {
         cache.set(src, extract(img))

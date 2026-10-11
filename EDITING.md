@@ -158,6 +158,8 @@ Go to **zhengtaing.com/admin** and sign in with your admin code (`ADMIN_CODE` in
 - **Demos:** change a song's status from the dropdown, or click **Edit** to change who it's pitched to, genre, notes, or hide it. Changes show up for visitors right away, with no deploy.
 - **People:** click **+ New access code** to make a code for someone. Everyone hears all demos by default; pick **Only these songs** to limit someone. You can see how many songs each person hearted, give them a new code, or **Remove** them (they're signed out straight away).
 - **Activity:** who signed in, what they played and favorited, and wrong-code attempts.
-- New audio files still go in from your Mac: put them in `private-demos/`, run `npm run demos`, then `npm run deploy`.
+- **Add demo:** once Cloudflare R2 is connected, click **+ Add demo**, pick the song file (and a cover if you have one), fill in the details and save. Songs you upload this way can be deleted from their Edit panel.
+- Songs added from your Mac still work: put them in `private-demos/`, run `npm run demos`, then `npm run demos:upload` (sends them to R2) and `npm run deploy`.
 - The old shared password (`DEMOS_PASSWORD`) keeps working until you click **Turn off** on its row in People.
 - Saving needs the free Upstash Redis database connected in Vercel (Storage tab). Locally, `npm run dev` stores everything in `.data/` instead.
+- Song files live in a private Cloudflare R2 bucket (keys `R2_*` in `.env.local` and Vercel). Visitors only ever get a link that expires after 2 hours.

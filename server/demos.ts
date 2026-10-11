@@ -15,10 +15,12 @@
  *   DEMOS_PASSWORD        optional: the old shared password, which keeps working
  *                         until you turn it off on the admin People page
  *   KV_REST_API_URL / KV_REST_API_TOKEN  the Upstash Redis database (see store.ts)
+ *   R2_*                  optional: Cloudflare R2 bucket holding the audio (see r2.ts)
  */
 import { createHash, createHmac, randomInt, timingSafeEqual } from 'node:crypto'
 import { open, readFile, stat } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
+import { objectKey, r2Config, r2Url } from './r2.js'
 import { pairs, store } from './store.js'
 
 export const COOKIE_NAME = 'zt_demos'
@@ -284,12 +286,17 @@ async function demosFile(): Promise<Demo[]> {
   }
 }
 
-/** demos.json with any edits made on the admin page applied on top. */
+/** demos.json plus songs uploaded on the admin page, with admin edits applied on top. */
 export async function loadDemos(): Promise<Demo[]> {
-  const demos = await demosFile()
+  const fromFile = await demosFile()
   const s = store()
-  if (!s) return demos
-  const edits = pairs((await s.run([['HGETALL', 'demo-edits']]))[0])
+  if (!s) return fromFile
+  const [editsRaw, addedRaw] = await s.run([['HGETALL', 'demo-edits'], ['HGETALL', 'demos-added']])
+  const edits = pairs(editsRaw)
+  const added = Object.values(pairs(addedRaw))
+    .map((v) => JSON.parse(v) as Demo & { addedAt?: string })
+    .sort((a, b) => (b.addedAt ?? '').localeCompare(a.addedAt ?? ''))
+  const demos = [...added, ...fromFile.filter((d) => !added.some((a) => a.id === d.id))]
   return demos.map((d) => (edits[d.id] ? { ...d, ...(JSON.parse(edits[d.id]) as Partial<Demo>), id: d.id, file: d.file, cover: d.cover } : d))
 }
 
@@ -404,9 +411,19 @@ const MIME: Record<string, string> = {
   '.webp': 'image/webp',
 }
 
-/** Streams a file from inside private-demos/, with Range support for seeking. */
+/**
+ * Sends a demo file. With R2 set up this is a redirect to a signed link that
+ * expires in 2 hours; otherwise the file is streamed from private-demos/.
+ */
 export async function serveFile(request: Request, file: string | undefined) {
   if (!file) return new Response('Not found', { status: 404 })
+  const r2 = r2Config()
+  if (r2) {
+    return new Response(null, {
+      status: 302,
+      headers: { Location: r2Url(r2, 'GET', objectKey(file), 7200), 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer' },
+    })
+  }
   // Only ever serve files from inside private-demos/.
   const path = resolve(DEMOS_DIR, file)
   if (!path.startsWith(DEMOS_DIR + '/')) return new Response('Not found', { status: 404 })

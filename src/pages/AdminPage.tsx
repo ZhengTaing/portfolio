@@ -24,6 +24,8 @@ interface AdminDemo {
   privateNotes?: string
   reservation?: string
   hidden?: boolean
+  /** Uploaded on this page (can be deleted). */
+  uploaded?: boolean
 }
 
 interface AdminPerson {
@@ -87,6 +89,7 @@ export default function AdminPage() {
   usePageMeta({ title: 'Admin', description: 'Private admin page.', path: '/admin' })
   const [auth, setAuth] = useState<'checking' | 'out' | 'in' | 'unavailable'>('checking')
   const [storeReady, setStoreReady] = useState(true)
+  const [uploadsReady, setUploadsReady] = useState(false)
   const [tab, setTab] = useState<Tab>('demos')
 
   useEffect(() => {
@@ -98,10 +101,11 @@ export default function AdminPage() {
   }, [])
 
   useEffect(() => {
-    api<{ storeReady?: boolean }>('me')
+    api<{ storeReady?: boolean; uploadsReady?: boolean }>('me')
       .then(({ status, data }) => {
         if (status === 200) {
           setStoreReady(Boolean(data.storeReady))
+          setUploadsReady(Boolean(data.uploadsReady))
           setAuth('in')
         } else setAuth(status === 503 ? 'unavailable' : 'out')
       })
@@ -160,7 +164,7 @@ export default function AdminPage() {
           </aside>
           <main className="min-w-0 p-4 sm:p-8">
             {!storeReady && <StoreWarning />}
-            {tab === 'demos' && <DemosTab storeReady={storeReady} />}
+            {tab === 'demos' && <DemosTab storeReady={storeReady} uploadsReady={uploadsReady} />}
             {tab === 'people' && <PeopleTab storeReady={storeReady} />}
             {tab === 'activity' && <ActivityTab />}
           </main>
@@ -264,7 +268,7 @@ function useDemos() {
   return { demos, setDemos, reload }
 }
 
-function DemosTab({ storeReady }: { storeReady: boolean }) {
+function DemosTab({ storeReady, uploadsReady }: { storeReady: boolean; uploadsReady: boolean }) {
   const { demos, setDemos, reload } = useDemos()
   const [q, setQ] = useState('')
   const [editing, setEditing] = useState<AdminDemo | null>(null)
@@ -372,23 +376,48 @@ function DemosTab({ storeReady }: { storeReady: boolean }) {
             await save(editing.id, patch)
             setEditing(null)
           }}
+          onDelete={
+            editing.uploaded
+              ? async () => {
+                  if (!confirm(`Delete ${editing.title} for good? The song file is removed too.`)) return
+                  await api('demo-delete', { id: editing.id })
+                  setEditing(null)
+                  await reload()
+                }
+              : undefined
+          }
         />
       )}
-      {adding && (
-        <Drawer title="Add a demo" onClose={() => setAdding(false)}>
-          <p className="text-sm leading-relaxed">New audio still goes in from your Mac, because song files are too big to upload through the website:</p>
-          <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-relaxed">
-            <li>
-              Put the song file (WAV, MP3 or M4A) in the <code>private-demos</code> folder.
-            </li>
-            <li>
-              Run <code>npm run demos</code>, then <code>npm run deploy</code>.
-            </li>
-            <li>The song shows up here. Click Edit to fill in status, targets, genre and notes.</li>
-          </ol>
-          <p className="text-muted mt-6 text-sm">Everything else (status, who it&rsquo;s pitched to, notes, hiding a song) you can change right here.</p>
-        </Drawer>
-      )}
+      {adding &&
+        (uploadsReady ? (
+          <DemoEditor
+            demo={{ id: 'new', title: '', status: 'available' }}
+            storeReady={storeReady}
+            onClose={() => setAdding(false)}
+            onSave={async () => {}}
+            onCreated={async () => {
+              setAdding(false)
+              setSaved('Song added. Visitors see it right away.')
+              setTimeout(() => setSaved(''), 3000)
+              await reload()
+            }}
+          />
+        ) : (
+          <Drawer title="Add a demo" onClose={() => setAdding(false)}>
+            <p className="text-sm leading-relaxed">
+              Uploading from this page turns on once song storage (Cloudflare R2) is connected. Until then, add songs from your Mac:
+            </p>
+            <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-relaxed">
+              <li>
+                Put the song file (WAV, MP3 or M4A) in the <code>private-demos</code> folder.
+              </li>
+              <li>
+                Run <code>npm run demos</code>, then <code>npm run deploy</code>.
+              </li>
+              <li>The song shows up here. Click Edit to fill in status, targets, genre and notes.</li>
+            </ol>
+          </Drawer>
+        ))}
     </section>
   )
 }
@@ -448,7 +477,62 @@ function ChipPicker({ label, options, value, onChange }: { label: string; option
   )
 }
 
-function DemoEditor({ demo, storeReady, onClose, onSave }: { demo: AdminDemo; storeReady: boolean; onClose: () => void; onSave: (p: Partial<AdminDemo>) => Promise<void> }) {
+/** Sends a file straight to song storage with a signed link, reporting progress (0–1). */
+function uploadFile(url: string, file: File, onProgress: (p: number) => void) {
+  return new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('PUT', url)
+    if (file.type) xhr.setRequestHeader('Content-Type', file.type)
+    xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total)
+    xhr.onload = () => (xhr.status < 300 ? resolve() : reject(new Error(`Upload failed (${xhr.status})`)))
+    xhr.onerror = () => reject(new Error('Upload failed. Check your connection.'))
+    xhr.send(file)
+  })
+}
+
+/** Song length as "m:ss", read in the browser. */
+function audioLength(file: File) {
+  return new Promise<string | undefined>((resolve) => {
+    const a = new Audio()
+    const url = URL.createObjectURL(file)
+    a.preload = 'metadata'
+    a.onloadedmetadata = () => {
+      URL.revokeObjectURL(url)
+      const t = a.duration
+      resolve(Number.isFinite(t) ? `${Math.floor(t / 60)}:${String(Math.round(t % 60)).padStart(2, '0')}` : undefined)
+    }
+    a.onerror = () => resolve(undefined)
+    a.src = url
+  })
+}
+
+const titleFromFile = (name: string) =>
+  name
+    .replace(/\.[^.]+$/, '')
+    .replace(/\s*\((ai demo|v\d+)\)\s*/gi, ' ')
+    .trim()
+
+function DemoEditor({
+  demo,
+  storeReady,
+  onClose,
+  onSave,
+  onDelete,
+  onCreated,
+}: {
+  demo: AdminDemo
+  storeReady: boolean
+  onClose: () => void
+  onSave: (p: Partial<AdminDemo>) => Promise<void>
+  onDelete?: () => Promise<void>
+  /** Set for a new song: upload the files, then create it. */
+  onCreated?: () => Promise<void>
+}) {
+  const adding = Boolean(onCreated)
+  const [audioFile, setAudioFile] = useState<File | null>(null)
+  const [coverFile, setCoverFile] = useState<File | null>(null)
+  const [progress, setProgress] = useState('')
+  const [error, setError] = useState('')
   const [f, setF] = useState({
     ...demo,
     targets: (demo.targetArtists ?? []).join(', '),
@@ -462,7 +546,8 @@ function DemoEditor({ demo, storeReady, onClose, onSave }: { demo: AdminDemo; st
   async function submit(e: FormEvent) {
     e.preventDefault()
     setBusy(true)
-    await onSave({
+    setError('')
+    const patch: Partial<AdminDemo> = {
       title: f.title,
       demoArtist: f.demoArtist,
       note: f.note,
@@ -479,17 +564,70 @@ function DemoEditor({ demo, storeReady, onClose, onSave }: { demo: AdminDemo; st
       privateNotes: f.privateNotes,
       reservation: f.reservation,
       hidden: f.hidden,
-    })
-    setBusy(false)
+    }
+    if (!adding) {
+      await onSave(patch)
+      setBusy(false)
+      return
+    }
+    try {
+      if (!audioFile) throw new Error('Choose the song file.')
+      const send = async (file: File, kind: 'audio' | 'cover', label: string) => {
+        const { status, data } = await api<{ url?: string; file?: string; error?: string }>('upload-url', { filename: file.name, kind })
+        if (status !== 200 || !data.url || !data.file) throw new Error(data.error ?? 'Could not start the upload.')
+        await uploadFile(data.url, file, (p) => setProgress(`Uploading ${label}… ${Math.round(p * 100)}%`))
+        return data.file
+      }
+      const duration = await audioLength(audioFile)
+      const file = await send(audioFile, 'audio', 'song')
+      const cover = coverFile ? await send(coverFile, 'cover', 'cover') : undefined
+      setProgress('Saving…')
+      const { status, data } = await api<{ error?: string }>('demo-create', { file, cover, duration, patch })
+      if (status !== 200) throw new Error(data.error ?? 'Could not save the song.')
+      await onCreated!()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.')
+    } finally {
+      setBusy(false)
+      setProgress('')
+    }
   }
 
   return (
-    <Drawer title={`Edit ${demo.title}`} onClose={onClose}>
+    <Drawer title={adding ? 'Add demo' : `Edit ${demo.title}`} onClose={onClose}>
       <form onSubmit={submit} className="grid gap-4">
-        <div className="flex items-center gap-4">
-          <Cover d={demo} className="size-20 shrink-0" />
-          <p className="text-muted text-sm">To change the audio or cover, replace the file in private-demos/ and redeploy.</p>
-        </div>
+        {adding ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="grid cursor-pointer place-items-center gap-1 border border-dashed border-white/40 p-4 text-center text-sm hover:border-white">
+              <span className="label">🎵 Song file</span>
+              <span className="text-muted text-xs">{audioFile ? `${audioFile.name} · ${(audioFile.size / 1e6).toFixed(1)} MB` : 'MP3, M4A or WAV'}</span>
+              <input
+                type="file"
+                accept="audio/*,.m4a,.mp3,.wav,.flac,.ogg,.aac"
+                required
+                className="sr-only"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] ?? null
+                  setAudioFile(file)
+                  if (file && !f.title) set('title', titleFromFile(file.name))
+                }}
+              />
+            </label>
+            <label className="grid cursor-pointer place-items-center gap-1 border border-dashed border-white/40 p-4 text-center text-sm hover:border-white">
+              <span className="label">🖼 Cover (optional)</span>
+              <span className="text-muted text-xs">{coverFile ? coverFile.name : 'JPG, PNG or WebP'}</span>
+              <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)} />
+            </label>
+            <p className="text-muted text-xs sm:col-span-2">Tip: MP3 or M4A streams fastest. WAV works but is about 10× bigger.</p>
+          </div>
+        ) : (
+          <div className="flex items-center gap-4">
+            <Cover d={demo} className="size-20 shrink-0" />
+            <p className="text-muted text-sm">
+              {demo.uploaded ? 'To change the audio, delete this song and add it again.' : 'To change the audio or cover, replace the file in private-demos/ and redeploy.'}
+            </p>
+          </div>
+        )}
         <Field label="Title">
           <input className={inputCls} value={f.title} onChange={(e) => set('title', e.target.value)} required />
         </Field>
@@ -554,13 +692,28 @@ function DemoEditor({ demo, storeReady, onClose, onSave }: { demo: AdminDemo; st
           <input type="checkbox" checked={Boolean(f.hidden)} onChange={(e) => set('hidden', e.target.checked)} />
           Hide this song from everyone
         </label>
-        <div className="flex gap-2 pt-2">
+        {progress && (
+          <p role="status" className="label text-accent">
+            {progress}
+          </p>
+        )}
+        {error && (
+          <p role="alert" className="text-accent text-sm">
+            {error}
+          </p>
+        )}
+        <div className="flex flex-wrap gap-2 pt-2">
           <button type="submit" disabled={busy || !storeReady} className={btnPrimary}>
             {busy ? 'Saving…' : 'Save & publish'}
           </button>
           <button type="button" onClick={onClose} className={btnGhost}>
             Cancel
           </button>
+          {onDelete && (
+            <button type="button" onClick={onDelete} className="label text-accent ml-auto uppercase hover:underline">
+              Delete song
+            </button>
+          )}
         </div>
       </form>
     </Drawer>

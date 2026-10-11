@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "placeholders": "node scripts/generate-placeholders.mjs",
     "demos": "node scripts/prepare-demos.mjs",
-    "deploy": "npm test && npm run build && npx -y vercel@63 deploy --prod"
+    "deploy": "npm test && npm run build && npx -y vercel@63 deploy --prod",
+    "demos:upload": "node scripts/upload-demos.mjs"
   },
   "dependencies": {
     "@fontsource-variable/archivo": "^5.3.0",

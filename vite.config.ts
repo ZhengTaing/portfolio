@@ -117,8 +117,8 @@ function audioFiles(): Plugin {
 }
 
 export default defineConfig(({ mode }) => {
-  // Make .env.local values (DEMOS_*, ADMIN_CODE, KV_*) visible to the dev API.
-  Object.assign(process.env, loadEnv(mode, process.cwd(), ['DEMOS_', 'ADMIN_', 'KV_']))
+  // Make .env.local values (DEMOS_*, ADMIN_CODE, KV_*, R2_*) visible to the dev API.
+  Object.assign(process.env, loadEnv(mode, process.cwd(), ['DEMOS_', 'ADMIN_', 'KV_', 'R2_']))
   return {
   plugins: [react(), tailwindcss(), seoFiles(), demosApi(), audioFiles()],
   test: {
