@@ -10,3 +10,7 @@ private-demos/*.wav
 .env
 .env.*
 .data
+private-demos/*.m4a
+private-demos/*.mp3
+private-demos/web
+private-demos/covers
