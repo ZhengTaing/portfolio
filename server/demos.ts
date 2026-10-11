@@ -348,14 +348,16 @@ export async function logout(request: Request) {
   return json({ ok: true }, 200, { 'Set-Cookie': cookie(COOKIE_NAME, COOKIE_PATH, '', 0, request) })
 }
 
-const denied = (auth: Auth) =>
-  auth.ok ? null : json({ error: auth.ended ? 'Your access has ended.' : 'Access code required.', ended: auth.ended }, 401)
+function denied(auth: Auth) {
+  const ended = 'ended' in auth && auth.ended
+  return json({ error: ended ? 'Your access has ended.' : 'Access code required.', ended }, 401)
+}
 
 /** GET /api/demos  →  { me, favorites, demos } for the signed-in person */
 export async function list(request: Request) {
   if (!secret()) return json({ error: 'Demos are not configured.' }, 503)
   const auth = await authenticate(request)
-  if (!auth.ok) return denied(auth)!
+  if (!auth.ok) return denied(auth)
   const { person } = auth
   const demos = (await loadDemos()).filter((d) => !d.hidden && canHear(person, d.id))
   const favs = await favoritesOf(person.id)
@@ -369,7 +371,7 @@ export async function list(request: Request) {
 /** POST /api/demos/favorite  { id, on }  →  heart / un-heart a song */
 export async function favorite(request: Request) {
   const auth = await authenticate(request)
-  if (!auth.ok) return denied(auth)!
+  if (!auth.ok) return denied(auth)
   const s = store()
   if (!s) return json({ error: 'Favorites are not set up yet.' }, 503)
   let id = ''
