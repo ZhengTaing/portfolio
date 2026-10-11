@@ -12,8 +12,11 @@ import {
   type Pitch,
   type PitchFilters,
 } from '../lib/pitch'
+import { useFavorites } from '../lib/favorites'
 import { useCoverColor } from '../lib/useCoverColor'
 import { formatTime, usePlaylist } from '../lib/usePlaylist'
+import { HeartButton, QueueButton } from './SongActions'
+import { Ticker } from './Ticker'
 
 function Cover({ pitch, className = '' }: { pitch: Pitch; className?: string }) {
   if (pitch.coverUrl) {
@@ -246,7 +249,14 @@ function Backdrop({ pitch }: { pitch?: Pitch }) {
  */
 export function PitchBoard({ pitches, toolbarStart }: { pitches: Pitch[]; toolbarStart?: ReactNode }) {
   const [filters, setFilters] = useState<PitchFilters>(emptyFilters)
-  const visible = useMemo(() => pitches.filter((p) => matches(p, filters)), [pitches, filters])
+  const favs = useFavorites()
+  const [onlyFavs, setOnlyFavs] = useState(false)
+  const showFavs = favs.enabled && onlyFavs
+  const favCount = pitches.filter((x) => favs.ids.has(x.id)).length
+  const visible = useMemo(
+    () => pitches.filter((p) => matches(p, filters) && (!showFavs || favs.ids.has(p.id))),
+    [pitches, filters, showFavs, favs.ids],
+  )
   const p = usePlaylist(visible.length ? visible : pitches)
   const { track } = p
   const progress = p.duration ? (p.time / p.duration) * 100 : 0
@@ -260,6 +270,30 @@ export function PitchBoard({ pitches, toolbarStart }: { pitches: Pitch[]; toolba
         <div>{toolbarStart}</div>
         <FilterMenu filters={filters} setFilters={setFilters} pitches={pitches} resultCount={visible.length} />
       </div>
+
+      {favs.enabled && (
+        <div role="group" aria-label="Show" className="relative z-20 -mt-3 mb-6 flex flex-wrap gap-2">
+          <button
+            type="button"
+            aria-pressed={!onlyFavs}
+            onClick={() => setOnlyFavs(false)}
+            className={`label border px-3 py-1.5 uppercase transition-colors ${!onlyFavs ? 'border-white bg-white text-black' : 'border-white/30 hover:border-white'}`}
+          >
+            All songs ({pitches.length})
+          </button>
+          <button
+            type="button"
+            aria-pressed={onlyFavs}
+            onClick={() => setOnlyFavs(true)}
+            className={`label border px-3 py-1.5 uppercase transition-colors ${onlyFavs ? 'border-white bg-white text-black' : 'border-white/30 hover:border-white'}`}
+          >
+            <span aria-hidden="true" className="text-[#ff4d6d]">
+              ♥
+            </span>{' '}
+            My favorites ({favCount})
+          </button>
+        </div>
+      )}
 
 
       {track && (
@@ -281,14 +315,17 @@ export function PitchBoard({ pitches, toolbarStart }: { pitches: Pitch[]; toolba
                   </span>
                 )}
               </p>
-              <h2 className="font-display mt-1 truncate text-2xl leading-none font-extrabold tracking-[-0.02em] sm:text-4xl lg:text-5xl xl:text-6xl">
-                {track.title}
-              </h2>
-              <p className="label mt-2 truncate text-white/80">
+              <div className="mt-1 flex min-w-0 items-center gap-3">
+                <h2 className="font-display min-w-0 truncate text-2xl leading-none font-extrabold tracking-[-0.02em] sm:text-4xl lg:text-5xl xl:text-6xl">
+                  {track.title}
+                </h2>
+                <HeartButton id={track.id} title={track.title} size="lg" />
+              </div>
+              <Ticker running={p.playing} className="label mt-2 text-white/80">
                 Demo: {track.demoArtist || 'Zheng Taing'}
                 {track.targetArtists?.length ? ` · For → ${track.targetArtists.join(', ')}` : ''}
-              </p>
-              {metaLine(track) && <p className="label mt-1 hidden truncate text-white/60 sm:block">{metaLine(track)}</p>}
+                {metaLine(track) && <span className="text-white/60"> · {metaLine(track)}</span>}
+              </Ticker>
               {p.error && (
                 <p role="alert" className="text-accent mt-1 text-sm">
                   This demo could not be loaded right now.
@@ -344,6 +381,7 @@ export function PitchBoard({ pitches, toolbarStart }: { pitches: Pitch[]; toolba
                 >
                   Shuffle {p.shuffle ? 'on' : 'off'}
                 </button>
+                <QueueButton track={track} label="Unreleased" className="ml-1" />
               </div>
             </div>
           </div>
@@ -360,13 +398,16 @@ export function PitchBoard({ pitches, toolbarStart }: { pitches: Pitch[]; toolba
               {queue.map((q, i) => {
                 const current = q.id === track.id
                 return (
-                  <li key={q.id}>
+                  <li
+                    key={q.id}
+                    className={`group flex items-center pr-3 transition-colors ${current ? 'bg-[color-mix(in_srgb,var(--room-accent)_16%,transparent)]' : 'hover:bg-white/5'}`}
+                  >
                     <button
                       type="button"
                       onClick={() => p.playTrack(q.id)}
                       aria-current={current ? 'true' : undefined}
                       aria-label={`${current && p.playing ? 'Pause' : 'Play'} ${q.title} from playlist`}
-                      className={`grid w-full grid-cols-[1.75rem_2.25rem_1fr_auto] items-center gap-3 px-4 py-1.5 text-left transition-colors ${current ? 'text-accent bg-[color-mix(in_srgb,var(--room-accent)_16%,transparent)]' : 'hover:bg-white/5'}`}
+                      className={`grid min-w-0 flex-1 grid-cols-[1.75rem_2.25rem_1fr_auto] items-center gap-3 py-1.5 pl-4 text-left ${current ? 'text-accent' : ''}`}
                     >
                       <span className="label text-muted tabular-nums">
                         {current && p.playing ? <span className="text-accent">▶</span> : String(i + 1).padStart(2, '0')}
@@ -377,6 +418,15 @@ export function PitchBoard({ pitches, toolbarStart }: { pitches: Pitch[]; toolba
                       <span className="font-display truncate text-sm font-bold">{q.title}</span>
                       <span className="label text-muted tabular-nums">{q.duration}</span>
                     </button>
+                    <span className="flex items-center gap-2 pl-2">
+                      <QueueButton
+                        track={q}
+                        label="Unreleased"
+                        compact
+                        className="pointer-coarse:hidden opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
+                      />
+                      <HeartButton id={q.id} title={q.title} size="sm" />
+                    </span>
                   </li>
                 )
               })}
@@ -390,12 +440,18 @@ export function PitchBoard({ pitches, toolbarStart }: { pitches: Pitch[]; toolba
       </p>
 
       {visible.length === 0 ? (
+        showFavs && favCount === 0 ? (
+          <div className="label border-line border p-6">
+            No favorites yet. Tap ♡ on a song to save it here.
+          </div>
+        ) : (
         <div className="label border-line border p-6">
           No songs match these filters.{' '}
           <button type="button" onClick={() => setFilters(emptyFilters)} className="link-underline">
             Clear filters
           </button>
         </div>
+        )
       ) : (
         <ul data-reveal-stagger className="grid gap-3.5 md:grid-cols-2" aria-label="Song pitches">
           {visible.map((pitch) => {
@@ -434,7 +490,13 @@ export function PitchBoard({ pitches, toolbarStart }: { pitches: Pitch[]; toolba
                     <Targets pitch={pitch} />
                     {meta && <p className="label text-muted">{meta}</p>}
                     {pitch.pitchNotes && <p className="line-clamp-2 text-xs leading-relaxed text-[#ddd]">{pitch.pitchNotes}</p>}
-                    <p className="label text-muted mt-auto pt-1">{pitch.duration}</p>
+                    <div className="mt-auto flex items-center justify-between gap-2 pt-1">
+                      <p className="label text-muted">{pitch.duration}</p>
+                      <span className="flex items-center gap-2">
+                        <QueueButton track={pitch} label="Unreleased" />
+                        <HeartButton id={pitch.id} title={pitch.title} className="size-8 border border-white/40" />
+                      </span>
+                    </div>
                   </div>
                 </article>
               </li>

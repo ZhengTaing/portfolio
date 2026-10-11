@@ -17,6 +17,15 @@
       ]
     },
     {
+      "source": "/admin",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
       "source": "/assets/(.*)",
       "headers": [
         {
@@ -46,6 +55,9 @@
   "functions": {
     "api/demos/*.ts": {
       "includeFiles": "private-demos/{demos.json,*.mp3,*.m4a,web/**,covers/**}"
+    },
+    "api/admin.ts": {
+      "includeFiles": "private-demos/{demos.json,covers/**}"
     }
   }
 }

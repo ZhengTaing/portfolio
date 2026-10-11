@@ -1,24 +1,33 @@
 /**
- * Password-protected demos ("Unreleased").
+ * Private demos ("Unreleased"), unlocked with personal access codes.
  *
  * Everything here runs on the server only (Vercel functions in `api/`, or the
  * Vite dev middleware locally). Demo audio and metadata live in
  * `private-demos/`, which is never copied into the public site, so the files
  * cannot be downloaded without a valid session cookie.
  *
+ * Each person gets their own code (made on the /admin page). Signing in gives
+ * a 3-day session tied to that person; removing them or giving them a new code
+ * ends every session they have at once.
+ *
  * Environment variables:
- *   DEMOS_PASSWORD        the password visitors type in
- *   DEMOS_SESSION_SECRET  random string used to sign the session cookie
+ *   DEMOS_SESSION_SECRET  random string used to sign session cookies (required)
+ *   DEMOS_PASSWORD        optional: the old shared password, which keeps working
+ *                         until you turn it off on the admin People page
+ *   KV_REST_API_URL / KV_REST_API_TOKEN  the Upstash Redis database (see store.ts)
  */
-import { createHmac, timingSafeEqual } from 'node:crypto'
+import { createHash, createHmac, randomInt, timingSafeEqual } from 'node:crypto'
 import { open, readFile, stat } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
+import { pairs, store } from './store.js'
 
 export const COOKIE_NAME = 'zt_demos'
-const SESSION_DAYS = 7
+const SESSION_DAYS = 3
 const DEMOS_DIR = resolve(process.cwd(), 'private-demos')
 /** Max bytes per response; serverless functions cap response size (~4.5 MB on Vercel). */
 const CHUNK = 2 * 1024 * 1024
+/** Sign-in attempts allowed per IP address per minute. */
+const LOGIN_LIMIT = 5
 
 export type PitchStatus = 'available' | 'on-hold' | 'reserved' | 'placed'
 
@@ -43,7 +52,7 @@ export interface Demo {
   genre?: string | string[]
   /** Musical key, e.g. "D major". */
   key?: string
-  bpm?: number
+  bpm?: number | null
   status?: PitchStatus
   pitchNotes?: string
   /** On hold: ISO date the hold runs until (shown on the card). */
@@ -54,11 +63,26 @@ export interface Demo {
   privateNotes?: string
   /** Never sent to the browser. */
   reservation?: string
+  /** Hidden from everyone (set on the admin page). */
+  hidden?: boolean
+}
+
+/** Someone with an access code. */
+export interface Person {
+  id: string
+  name: string
+  code: string
+  /** "all" (the default) or a list of demo ids. */
+  access: 'all' | string[]
+  status: 'active' | 'removed'
+  createdAt: string
+  /** Bumped to end all of this person's sessions. */
+  version: number
 }
 
 /** The fields visitors are allowed to see; private management fields are dropped here. */
 export function toPublic(d: Demo) {
-  const { file: _file, cover, privateNotes: _notes, reservation: _reservation, ...rest } = d
+  const { file: _file, cover, privateNotes: _notes, reservation: _reservation, hidden: _hidden, ...rest } = d
   return {
     ...rest,
     status: d.status ?? 'available',
@@ -69,49 +93,57 @@ export function toPublic(d: Demo) {
   }
 }
 
-interface Config {
-  password: string
-  secret: string
-}
-
-function config(): Config | null {
-  const password = process.env.DEMOS_PASSWORD
-  const secret = process.env.DEMOS_SESSION_SECRET
-  if (!password || !secret) return null
-  return { password, secret }
-}
-
-const json = (body: unknown, status = 200, headers: Record<string, string> = {}) =>
+export const json = (body: unknown, status = 200, headers: Record<string, string> = {}) =>
   new Response(JSON.stringify(body), {
     status,
     headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...headers },
   })
 
-function safeEqual(a: string, b: string) {
-  const ab = Buffer.from(a)
-  const bb = Buffer.from(b)
-  return ab.length === bb.length && timingSafeEqual(ab, bb)
+const sha = (s: string) => createHash('sha256').update(s).digest()
+
+/** Constant-time comparison that doesn't reveal the length either. */
+export function safeEqual(a: string, b: string) {
+  return timingSafeEqual(sha(a), sha(b))
 }
 
-function sign(payload: string, secret: string) {
+export function sign(payload: string, secret: string) {
   return createHmac('sha256', secret).update(payload).digest('base64url')
 }
 
-export function createSession(secret: string, now = Date.now()) {
-  const expires = now + SESSION_DAYS * 24 * 60 * 60 * 1000
-  const payload = String(expires)
-  return `${payload}.${sign(payload, secret)}`
+function secret() {
+  return process.env.DEMOS_SESSION_SECRET || null
 }
 
-export function verifySession(token: string | undefined, secret: string, now = Date.now()) {
-  if (!token) return false
+// ---------------------------------------------------------------- sessions
+
+export interface Session {
+  /** Person id ("legacy" for the old shared password). */
+  p: string
+  /** Person version when the session was made. */
+  v: string
+  /** Expiry, ms since epoch. */
+  e: number
+}
+
+export function createSession(key: string, person: string, version: string, now = Date.now(), days = SESSION_DAYS) {
+  const payload = Buffer.from(JSON.stringify({ p: person, v: version, e: now + days * 86_400_000 })).toString('base64url')
+  return `${payload}.${sign(payload, key)}`
+}
+
+export function verifySession(token: string | undefined, key: string, now = Date.now()): Session | null {
+  if (!token) return null
   const [payload, signature] = token.split('.')
-  if (!payload || !signature) return false
-  if (!safeEqual(signature, sign(payload, secret))) return false
-  return Number(payload) > now
+  if (!payload || !signature) return null
+  if (!safeEqual(signature, sign(payload, key))) return null
+  try {
+    const s = JSON.parse(Buffer.from(payload, 'base64url').toString()) as Session
+    return typeof s.p === 'string' && typeof s.v === 'string' && s.e > now ? s : null
+  } catch {
+    return null
+  }
 }
 
-function readCookie(request: Request, name: string) {
+export function readCookie(request: Request, name: string) {
   const header = request.headers.get('cookie') ?? ''
   for (const part of header.split(';')) {
     const [k, ...v] = part.trim().split('=')
@@ -120,16 +152,131 @@ function readCookie(request: Request, name: string) {
   return undefined
 }
 
-function cookie(value: string, maxAge: number, request: Request) {
+export function cookie(name: string, path: string, value: string, maxAge: number, request: Request) {
   const secure = new URL(request.url).protocol === 'https:' ? '; Secure' : ''
-  return `${COOKIE_NAME}=${value}; Path=/api/demos; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${secure}`
+  return `${name}=${value}; Path=${path}; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${secure}`
 }
 
-function isAuthed(request: Request, cfg: Config) {
-  return verifySession(readCookie(request, COOKIE_NAME), cfg.secret)
+export function clientIp(request: Request) {
+  return (request.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || request.headers.get('x-real-ip') || 'local'
 }
 
-async function loadDemos(): Promise<Demo[]> {
+// ------------------------------------------------------------ rate limiting
+
+const memoryHits = new Map<string, { n: number; until: number }>()
+
+/** Counts one attempt; returns seconds to wait if over the limit, else 0. */
+export async function rateLimit(name: string, max: number, windowSec: number) {
+  const s = store()
+  if (s) {
+    const key = `rl:${name}`
+    const [n, ttl] = (await s.run([['INCR', key], ['TTL', key]])) as [number, number]
+    if (n === 1 || ttl < 0) await s.run([['EXPIRE', key, windowSec]])
+    return n > max ? Math.max(1, ttl) : 0
+  }
+  const now = Date.now()
+  const hit = memoryHits.get(name)
+  if (!hit || hit.until < now) {
+    memoryHits.set(name, { n: 1, until: now + windowSec * 1000 })
+    return 0
+  }
+  hit.n++
+  return hit.n > max ? Math.ceil((hit.until - now) / 1000) : 0
+}
+
+// ---------------------------------------------------------------- people
+
+export const LEGACY_ID = 'legacy'
+
+export function normalizeCode(code: string) {
+  return code.toLowerCase().replace(/[^a-z0-9]/g, '')
+}
+
+const CODE_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789'
+
+/** A new code like "k3j9-xp2m-7qwa" (no 0/o/1/l/i to avoid mix-ups). */
+export function newCode() {
+  const c = Array.from({ length: 12 }, () => CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]).join('')
+  return `${c.slice(0, 4)}-${c.slice(4, 8)}-${c.slice(8)}`
+}
+
+export async function loadPeople(): Promise<Person[]> {
+  const s = store()
+  if (!s) return []
+  const [all] = await s.run([['HGETALL', 'people']])
+  return Object.values(pairs(all))
+    .map((v) => JSON.parse(v) as Person)
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+}
+
+export async function savePerson(p: Person) {
+  await store()!.run([['HSET', 'people', p.id, JSON.stringify(p)]])
+}
+
+/** The old shared password, shown on the admin page as its own row so it can be turned off. */
+export async function legacyPerson(): Promise<Person | null> {
+  const password = process.env.DEMOS_PASSWORD
+  if (!password) return null
+  const s = store()
+  const saved = s ? pairs((await s.run([['HGETALL', 'legacy']]))[0]) : {}
+  return {
+    id: LEGACY_ID,
+    name: 'Old shared password',
+    code: password,
+    access: 'all',
+    status: saved.status === 'removed' ? 'removed' : 'active',
+    createdAt: '',
+    version: Number(saved.version ?? 0),
+  }
+}
+
+/** Version string stored in sessions. For the shared password it also changes when the password does. */
+const versionOf = (p: Person) => (p.id === LEGACY_ID ? `${sha(p.code).toString('hex').slice(0, 8)}:${p.version}` : String(p.version))
+
+export async function findPerson(id: string) {
+  if (id === LEGACY_ID) return legacyPerson()
+  const s = store()
+  if (!s) return null
+  const [v] = await s.run([['HGET', 'people', id]])
+  return v ? (JSON.parse(String(v)) as Person) : null
+}
+
+export const canHear = (p: Person, demoId: string) => p.access === 'all' || p.access.includes(demoId)
+
+type Auth = { ok: true; person: Person } | { ok: false; ended: boolean }
+
+/** Who is signed in. `ended` means they had access but it was removed or replaced. */
+async function authenticate(request: Request): Promise<Auth> {
+  const key = secret()
+  if (!key) return { ok: false, ended: false }
+  const session = verifySession(readCookie(request, COOKIE_NAME), key)
+  if (!session) return { ok: false, ended: false }
+  const person = await findPerson(session.p)
+  if (!person || person.status !== 'active' || versionOf(person) !== session.v) return { ok: false, ended: true }
+  return { ok: true, person }
+}
+
+// ---------------------------------------------------------------- activity
+
+export interface LogEntry {
+  at: string
+  who: string
+  name: string
+  event: 'signed-in' | 'played' | 'wrong-code' | 'blocked' | 'favorited'
+  demoId?: string
+  title?: string
+}
+
+export async function logEvent(e: Omit<LogEntry, 'at'>, extra: (string | number)[][] = []) {
+  const s = store()
+  if (!s) return
+  const entry: LogEntry = { at: new Date().toISOString(), ...e }
+  await s.run([['LPUSH', 'log', JSON.stringify(entry)], ['LTRIM', 'log', 0, 499], ...extra]).catch(() => {})
+}
+
+// ---------------------------------------------------------------- demos
+
+async function demosFile(): Promise<Demo[]> {
   try {
     return JSON.parse(await readFile(join(DEMOS_DIR, 'demos.json'), 'utf8')) as Demo[]
   } catch {
@@ -137,40 +284,108 @@ async function loadDemos(): Promise<Demo[]> {
   }
 }
 
-/** POST /api/demos/login  { password } */
+/** demos.json with any edits made on the admin page applied on top. */
+export async function loadDemos(): Promise<Demo[]> {
+  const demos = await demosFile()
+  const s = store()
+  if (!s) return demos
+  const edits = pairs((await s.run([['HGETALL', 'demo-edits']]))[0])
+  return demos.map((d) => (edits[d.id] ? { ...d, ...(JSON.parse(edits[d.id]) as Partial<Demo>), id: d.id, file: d.file, cover: d.cover } : d))
+}
+
+async function favoritesOf(personId: string) {
+  const s = store()
+  if (!s) return null
+  return ((await s.run([['SMEMBERS', `favs:${personId}`]]))[0] as string[]) ?? []
+}
+
+// ---------------------------------------------------------------- handlers
+
+const COOKIE_PATH = '/api/demos'
+
+/** POST /api/demos/login  { code } */
 export async function login(request: Request) {
-  const cfg = config()
-  if (!cfg) return json({ error: 'Demos are not configured.' }, 503)
-  let password = ''
+  const key = secret()
+  if (!key) return json({ error: 'Demos are not configured.' }, 503)
+  let code = ''
   try {
-    password = String(((await request.json()) as { password?: unknown }).password ?? '')
+    const body = (await request.json()) as { code?: unknown; password?: unknown }
+    code = String(body.code ?? body.password ?? '')
   } catch {
     return json({ error: 'Bad request.' }, 400)
   }
-  if (!safeEqual(password, cfg.password)) {
-    // Slow down guessing.
-    await new Promise((r) => setTimeout(r, 800))
-    return json({ error: 'Wrong password.' }, 401)
+
+  const ip = clientIp(request)
+  const wait = await rateLimit(`login:${ip}`, LOGIN_LIMIT, 60)
+  if (wait) {
+    if (wait >= 55) await logEvent({ who: '', name: 'Unknown', event: 'blocked' })
+    return json({ error: 'Too many tries.', retryAfter: wait }, 429, { 'Retry-After': String(wait) })
   }
+
+  const wanted = normalizeCode(code)
+  const legacy = await legacyPerson()
+  const people = [...(legacy ? [legacy] : []), ...(await loadPeople())]
+  // Compare against everyone (constant time per code) so timing doesn't reveal anything.
+  let match: Person | undefined
+  for (const p of people) {
+    const ok = p.id === LEGACY_ID ? safeEqual(code, p.code) : safeEqual(wanted, normalizeCode(p.code))
+    if (ok && !match) match = p
+  }
+  if (!match || match.status !== 'active' || !wanted) {
+    await logEvent({ who: '', name: 'Unknown', event: 'wrong-code' })
+    await new Promise((r) => setTimeout(r, 400))
+    return json({ error: 'That code is not right.' }, 401)
+  }
+
+  await logEvent({ who: match.id, name: match.name, event: 'signed-in' }, [['HSET', 'stats', `${match.id}:seen`, new Date().toISOString()]])
   return json({ ok: true }, 200, {
-    'Set-Cookie': cookie(createSession(cfg.secret), SESSION_DAYS * 24 * 60 * 60, request),
+    'Set-Cookie': cookie(COOKIE_NAME, COOKIE_PATH, createSession(key, match.id, versionOf(match)), SESSION_DAYS * 86_400, request),
   })
 }
 
 /** POST /api/demos/logout */
 export async function logout(request: Request) {
-  return json({ ok: true }, 200, { 'Set-Cookie': cookie('', 0, request) })
+  return json({ ok: true }, 200, { 'Set-Cookie': cookie(COOKIE_NAME, COOKIE_PATH, '', 0, request) })
 }
 
-/** GET /api/demos  →  list of demos (without file paths) */
+const denied = (auth: Auth) =>
+  auth.ok ? null : json({ error: auth.ended ? 'Your access has ended.' : 'Access code required.', ended: auth.ended }, 401)
+
+/** GET /api/demos  →  { me, favorites, demos } for the signed-in person */
 export async function list(request: Request) {
-  const cfg = config()
-  if (!cfg) return json({ error: 'Demos are not configured.' }, 503)
-  if (!isAuthed(request, cfg)) return json({ error: 'Password required.' }, 401)
-  const demos = await loadDemos()
+  if (!secret()) return json({ error: 'Demos are not configured.' }, 503)
+  const auth = await authenticate(request)
+  if (!auth.ok) return denied(auth)!
+  const { person } = auth
+  const demos = (await loadDemos()).filter((d) => !d.hidden && canHear(person, d.id))
+  const favs = await favoritesOf(person.id)
   return json({
+    me: { name: person.name },
+    favorites: favs ? favs.filter((id) => demos.some((d) => d.id === id)) : null,
     demos: demos.map(toPublic),
   })
+}
+
+/** POST /api/demos/favorite  { id, on }  →  heart / un-heart a song */
+export async function favorite(request: Request) {
+  const auth = await authenticate(request)
+  if (!auth.ok) return denied(auth)!
+  const s = store()
+  if (!s) return json({ error: 'Favorites are not set up yet.' }, 503)
+  let id = ''
+  let on = true
+  try {
+    const body = (await request.json()) as { id?: unknown; on?: unknown }
+    id = String(body.id ?? '')
+    on = body.on !== false
+  } catch {
+    return json({ error: 'Bad request.' }, 400)
+  }
+  const demo = (await loadDemos()).find((d) => d.id === id && !d.hidden)
+  if (!demo || !canHear(auth.person, id)) return json({ error: 'Not found.' }, 404)
+  await s.run([[on ? 'SADD' : 'SREM', `favs:${auth.person.id}`, id]])
+  if (on) await logEvent({ who: auth.person.id, name: auth.person.name, event: 'favorited', demoId: id, title: demo.title })
+  return json({ ok: true, favorites: await favoritesOf(auth.person.id) })
 }
 
 const MIME: Record<string, string> = {
@@ -186,19 +401,9 @@ const MIME: Record<string, string> = {
   '.webp': 'image/webp',
 }
 
-/** GET /api/demos/audio?id=…  →  the audio file, with Range support for seeking. */
-export async function audio(request: Request) {
-  const cfg = config()
-  if (!cfg) return new Response('Not configured', { status: 503 })
-  if (!isAuthed(request, cfg)) return new Response('Password required', { status: 401 })
-
-  const params = new URL(request.url).searchParams
-  const id = params.get('id')
-  const demo = (await loadDemos()).find((d) => d.id === id)
-  if (!demo) return new Response('Not found', { status: 404 })
-  const file = params.get('kind') === 'cover' ? demo.cover : demo.file
+/** Streams a file from inside private-demos/, with Range support for seeking. */
+export async function serveFile(request: Request, file: string | undefined) {
   if (!file) return new Response('Not found', { status: 404 })
-
   // Only ever serve files from inside private-demos/.
   const path = resolve(DEMOS_DIR, file)
   if (!path.startsWith(DEMOS_DIR + '/')) return new Response('Not found', { status: 404 })
@@ -250,4 +455,28 @@ export async function audio(request: Request) {
     status: 206,
     headers: { ...headers, 'Content-Range': `bytes ${start}-${end}/${size}`, 'Content-Length': String(length) },
   })
+}
+
+/** GET /api/demos/audio?id=…[&kind=cover]  →  the audio file (or cover image). */
+export async function audio(request: Request) {
+  if (!secret()) return new Response('Not configured', { status: 503 })
+  const auth = await authenticate(request)
+  if (!auth.ok) return new Response('Access code required', { status: 401 })
+
+  const params = new URL(request.url).searchParams
+  const id = params.get('id') ?? ''
+  const demo = (await loadDemos()).find((d) => d.id === id && !d.hidden)
+  if (!demo || !canHear(auth.person, id)) return new Response('Not found', { status: 404 })
+  const isCover = params.get('kind') === 'cover'
+
+  // Count a play when the song starts loading from the beginning (at most once per 30 minutes).
+  const range = request.headers.get('range')
+  if (!isCover && (!range || /^bytes=0-/.test(range)) && !(await rateLimit(`play:${auth.person.id}:${id}`, 1, 1800))) {
+    const { person } = auth
+    await logEvent({ who: person.id, name: person.name, event: 'played', demoId: id, title: demo.title }, [
+      ['HINCRBY', 'stats', `${person.id}:plays`, 1],
+      ['HSET', 'stats', `${person.id}:seen`, new Date().toISOString()],
+    ])
+  }
+  return serveFile(request, isCover ? demo.cover : demo.file)
 }

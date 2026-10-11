@@ -205,7 +205,7 @@ describe('unreleased demos', () => {
     expect(screen.getByRole('link', { name: /Demos & works in progress/ })).toHaveAttribute('href', '/music/unreleased')
   })
 
-  it('asks for a password, rejects a wrong one, and shows demos after unlocking', async () => {
+  it('asks for an access code, rejects a wrong one, and shows demos after unlocking', async () => {
     const demos = [
       {
         id: 'd1',
@@ -231,14 +231,22 @@ describe('unreleased demos', () => {
       },
     ]
     let authed = false
+    const favorites: string[] = []
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       if (url === '/api/demos/login') {
-        const { password } = JSON.parse(String(init?.body))
-        authed = password === 'right'
+        const { code } = JSON.parse(String(init?.body))
+        authed = code === 'right'
         return new Response('{}', { status: authed ? 200 : 401 })
       }
       if (url === '/api/demos') {
-        return authed ? new Response(JSON.stringify({ demos }), { status: 200 }) : new Response('{}', { status: 401 })
+        return authed
+          ? new Response(JSON.stringify({ demos, me: { name: 'Paul' }, favorites }), { status: 200 })
+          : new Response('{}', { status: 401 })
+      }
+      if (url === '/api/demos/favorite') {
+        const { id } = JSON.parse(String(init?.body))
+        favorites.push(id)
+        return new Response(JSON.stringify({ ok: true, favorites }), { status: 200 })
       }
       return new Response('{}', { status: 404 })
     })
@@ -246,17 +254,18 @@ describe('unreleased demos', () => {
     const user = userEvent.setup()
     renderAt('/music/unreleased')
 
-    const input = await screen.findByLabelText('Password')
+    const input = await screen.findByLabelText('Access code')
     expect(screen.queryByText('Secret Song')).not.toBeInTheDocument()
 
     await user.type(input, 'wrong')
     await user.click(screen.getByRole('button', { name: 'Unlock' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(/not right/)
 
-    await user.type(screen.getByLabelText('Password'), 'right')
+    await user.type(screen.getByLabelText('Access code'), 'right')
     await user.click(screen.getByRole('button', { name: 'Unlock' }))
     const cards = await screen.findByRole('list', { name: 'Song pitches' })
     expect(within(cards).getByRole('heading', { name: 'Secret Song' })).toBeInTheDocument()
+    expect(screen.getByText('Paul')).toBeInTheDocument()
     expect(within(cards).getAllByText('Demo: Zheng Taing')).toHaveLength(2)
     expect(within(cards).getByText('Artist A')).toBeInTheDocument()
     expect(within(cards).getByText(/On hold · Oct 30/)).toBeInTheDocument()
@@ -275,6 +284,22 @@ describe('unreleased demos', () => {
     expect(within(screen.getByRole('list', { name: 'Playlist' })).getAllByRole('listitem')).toHaveLength(1)
     await user.click(screen.getByRole('button', { name: 'Remove filter K-pop' }))
     expect(within(cards).getByRole('heading', { name: 'Second Song' })).toBeInTheDocument()
+
+    // Hearts save to the server and feed the "My favorites" view.
+    const heart = within(cards).getByRole('button', { name: 'Add Second Song to favorites' })
+    await user.click(heart)
+    expect(fetchMock).toHaveBeenCalledWith('/api/demos/favorite', expect.objectContaining({ body: JSON.stringify({ id: 'd2', on: true }) }))
+    expect(within(cards).getByRole('button', { name: 'Remove Second Song from favorites' })).toHaveAttribute('aria-pressed', 'true')
+    await user.click(screen.getByRole('button', { name: /My favorites \(1\)/ }))
+    expect(within(cards).queryByRole('heading', { name: 'Secret Song' })).not.toBeInTheDocument()
+    expect(within(cards).getByRole('heading', { name: 'Second Song' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /All songs/ }))
+
+    // "+ Queue" puts a song in Up next, which plays after the current one.
+    await user.click(within(cards).getByRole('button', { name: 'Add Second Song to queue' }))
+    expect(within(cards).getByRole('button', { name: 'Add Second Song to queue' })).toHaveTextContent('✓ Queued')
+    const bar = screen.getByRole('region', { name: 'Now playing' })
+    expect(within(bar).getByText(/Added “Second Song” to your queue/)).toBeInTheDocument()
   })
 })
 

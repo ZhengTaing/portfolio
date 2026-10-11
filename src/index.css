@@ -328,3 +328,33 @@
     transform: none;
   }
 }
+
+/* Song ticker (marquee) for long info lines in the players. */
+@keyframes ticker {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(var(--ticker-distance));
+  }
+}
+.ticker-track {
+  animation: ticker linear infinite;
+  will-change: transform;
+}
+.ticker-fade {
+  mask-image: linear-gradient(90deg, transparent 0, #000 1.25rem, #000 calc(100% - 2.5rem), transparent);
+}
+.ticker-fade-end {
+  mask-image: linear-gradient(90deg, #000 calc(100% - 2.5rem), transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track {
+    animation: none;
+  }
+  .ticker-fade,
+  .ticker-fade-end {
+    overflow-x: auto;
+    mask-image: none;
+  }
+}

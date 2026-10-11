@@ -11,6 +11,7 @@ const ReleaseDetailPage = lazy(() => import('./pages/ReleaseDetailPage'))
 const UnreleasedPage = lazy(() => import('./pages/UnreleasedPage'))
 const VisualArtPage = lazy(() => import('./pages/VisualArtPage'))
 const AboutPage = lazy(() => import('./pages/AboutPage'))
+const AdminPage = lazy(() => import('./pages/AdminPage'))
 
 /** Old /photography links (including ?image=…) keep working. */
 function LegacyPhotographyRedirect() {
@@ -30,6 +31,7 @@ export function AppRoutes() {
   return (
     <Suspense fallback={<PageFallback />}>
       <Routes>
+        <Route path="admin" element={<AdminPage />} />
         <Route element={<SiteLayout />}>
           <Route index element={<HomePage />} />
           <Route path="projects" element={<ProjectsPage />} />

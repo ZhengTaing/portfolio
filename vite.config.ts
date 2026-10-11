@@ -43,14 +43,16 @@ function seoFiles(): Plugin {
 
 /**
  * Runs the same /api/demos handlers that Vercel uses, inside the dev server,
- * so the password-protected demos page works with `npm run dev`.
+ * so the demos page and the admin page work with `npm run dev`.
  */
 function demosApi(): Plugin {
-  const routes: Record<string, Record<string, string>> = {
-    '/api/demos': { GET: 'list' },
-    '/api/demos/login': { POST: 'login' },
-    '/api/demos/logout': { POST: 'logout' },
-    '/api/demos/audio': { GET: 'audio' },
+  const routes: Record<string, Record<string, [string, string]>> = {
+    '/api/demos': { GET: ['/server/demos.ts', 'list'] },
+    '/api/demos/login': { POST: ['/server/demos.ts', 'login'] },
+    '/api/demos/logout': { POST: ['/server/demos.ts', 'logout'] },
+    '/api/demos/favorite': { POST: ['/server/demos.ts', 'favorite'] },
+    '/api/demos/audio': { GET: ['/server/demos.ts', 'audio'] },
+    '/api/admin': { GET: ['/server/admin.ts', 'admin'], POST: ['/server/admin.ts', 'admin'] },
   }
   return {
     name: 'demos-api',
@@ -59,13 +61,14 @@ function demosApi(): Plugin {
       server.middlewares.use(async (req: IncomingMessage, res: ServerResponse, next) => {
         const url = new URL(req.url ?? '/', 'http://localhost')
         // Never let the dev server hand out the private files directly.
-        if (url.pathname.startsWith('/private-demos') || url.pathname.startsWith('/server/')) {
+        if (url.pathname.startsWith('/private-demos') || url.pathname.startsWith('/server/') || url.pathname.startsWith('/.data')) {
           res.statusCode = 404
           return res.end()
         }
-        const handlerName = routes[url.pathname]?.[req.method ?? 'GET']
-        if (!handlerName) return next()
-        const mod = await server.ssrLoadModule('/server/demos.ts')
+        const route = routes[url.pathname]?.[req.method ?? 'GET']
+        if (!route) return next()
+        const [modulePath, handlerName] = route
+        const mod = await server.ssrLoadModule(modulePath)
         const chunks: Buffer[] = []
         for await (const c of req) chunks.push(c as Buffer)
         const headers = new Headers()
@@ -114,8 +117,8 @@ function audioFiles(): Plugin {
 }
 
 export default defineConfig(({ mode }) => {
-  // Make .env.local values (DEMOS_PASSWORD, DEMOS_SESSION_SECRET) visible to the dev API.
-  Object.assign(process.env, loadEnv(mode, process.cwd(), 'DEMOS_'))
+  // Make .env.local values (DEMOS_*, ADMIN_CODE, KV_*) visible to the dev API.
+  Object.assign(process.env, loadEnv(mode, process.cwd(), ['DEMOS_', 'ADMIN_', 'KV_']))
   return {
   plugins: [react(), tailwindcss(), seoFiles(), demosApi(), audioFiles()],
   test: {

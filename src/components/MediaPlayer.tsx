@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { useCoverColor } from '../lib/useCoverColor'
 import { formatTime, usePlaylist } from '../lib/usePlaylist'
+import { QueueButton } from './SongActions'
 
 export interface PlayerTrack {
   id: string
@@ -155,6 +156,7 @@ function CompactPlayer({ tracks, listLabel = 'Tracks', hideList = false, inline 
               >
                 ⏭
               </button>
+              <QueueButton track={track} label="Music" />
               <label className="label ml-auto hidden items-center gap-2 sm:flex">
                 Vol
                 <input
@@ -179,13 +181,13 @@ function CompactPlayer({ tracks, listLabel = 'Tracks', hideList = false, inline 
         {tracks.map((t, i) => {
           const active = i === index
           return (
-            <li key={t.id} className="border-line border-t">
+            <li key={t.id} className="border-line flex items-center gap-3 border-t">
               <button
                 type="button"
                 onClick={() => (active ? toggle() : select(i))}
                 aria-current={active ? 'true' : undefined}
                 aria-label={`${active && playing ? 'Pause' : 'Play'} ${t.title}`}
-                className={`group grid w-full grid-cols-[2.5rem_1fr_auto] items-center gap-3 py-5 text-left transition-colors sm:grid-cols-[3rem_1fr_auto] ${active ? 'text-accent' : 'hover:text-accent'}`}
+                className={`group grid min-w-0 flex-1 grid-cols-[2.5rem_1fr_auto] items-center gap-3 py-5 text-left transition-colors sm:grid-cols-[3rem_1fr_auto] ${active ? 'text-accent' : 'hover:text-accent'}`}
               >
                 <span className="label tabular-nums">
                   {active && playing ? (
@@ -211,6 +213,7 @@ function CompactPlayer({ tracks, listLabel = 'Tracks', hideList = false, inline 
                 </span>
                 <span className="label text-muted tabular-nums">{t.duration}</span>
               </button>
+              <QueueButton track={t} label="Music" compact className="border-current" />
             </li>
           )
         })}
@@ -319,6 +322,7 @@ function ShowcasePlayer({ tracks, listLabel = 'Tracks', heading, backdrop = true
               <button type="button" aria-pressed={p.shuffle} onClick={() => p.setShuffle(!p.shuffle)} className={`label ml-1 px-1 uppercase ${p.shuffle ? 'text-accent' : 'text-white/60 hover:text-white'}`}>
                 Shuffle {p.shuffle ? 'on' : 'off'}
               </button>
+              <QueueButton track={track} label="Music" className="ml-1" />
             </div>
           </div>
         </div>
@@ -334,13 +338,16 @@ function ShowcasePlayer({ tracks, listLabel = 'Tracks', heading, backdrop = true
             {tracks.map((t, i) => {
               const current = t.id === track.id
               return (
-                <li key={t.id}>
+                <li
+                  key={t.id}
+                  className={`group flex items-center pr-3 transition-colors ${current ? 'bg-[color-mix(in_srgb,var(--room-accent)_16%,transparent)]' : 'hover:bg-white/5'}`}
+                >
                   <button
                     type="button"
                     onClick={() => p.playTrack(t.id)}
                     aria-current={current ? 'true' : undefined}
                     aria-label={`${current && p.playing ? 'Pause' : 'Play'} ${t.title}`}
-                    className={`grid w-full grid-cols-[1.75rem_2.25rem_1fr_auto] items-center gap-3 px-4 py-1.5 text-left transition-colors ${current ? 'text-accent bg-[color-mix(in_srgb,var(--room-accent)_16%,transparent)]' : 'hover:bg-white/5'}`}
+                    className={`grid min-w-0 flex-1 grid-cols-[1.75rem_2.25rem_1fr_auto] items-center gap-3 py-1.5 pl-4 text-left ${current ? 'text-accent' : ''}`}
                   >
                     <span className="label tabular-nums text-white/60">{current && p.playing ? <span className="text-accent">▶</span> : String(i + 1).padStart(2, '0')}</span>
                     <span className="size-9 overflow-hidden bg-black/30">
@@ -352,6 +359,12 @@ function ShowcasePlayer({ tracks, listLabel = 'Tracks', heading, backdrop = true
                     </span>
                     <span className="label tabular-nums text-white/60">{t.duration}</span>
                   </button>
+                  <QueueButton
+                    track={t}
+                    label="Music"
+                    compact
+                    className="ml-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100"
+                  />
                 </li>
               )
             })}

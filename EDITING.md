@@ -150,3 +150,14 @@ npm run build   # makes sure the site builds without errors
 
 These use React and Tailwind, so they're a good next step once content editing feels easy.
 You can also ask Claude in this project to make any change for you or to explain a file line by line.
+
+## Admin page (Unreleased demos)
+
+Go to **zhengtaing.com/admin** and sign in with your admin code (`ADMIN_CODE` in `.env.local` and in Vercel).
+
+- **Demos:** change a song's status from the dropdown, or click **Edit** to change who it's pitched to, genre, notes, or hide it. Changes show up for visitors right away, with no deploy.
+- **People:** click **+ New access code** to make a code for someone. Everyone hears all demos by default; pick **Only these songs** to limit someone. You can see how many songs each person hearted, give them a new code, or **Remove** them (they're signed out straight away).
+- **Activity:** who signed in, what they played and favorited, and wrong-code attempts.
+- New audio files still go in from your Mac: put them in `private-demos/`, run `npm run demos`, then `npm run deploy`.
+- The old shared password (`DEMOS_PASSWORD`) keeps working until you click **Turn off** on its row in People.
+- Saving needs the free Upstash Redis database connected in Vercel (Storage tab). Locally, `npm run dev` stores everything in `.data/` instead.

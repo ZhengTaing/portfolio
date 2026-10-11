@@ -9,3 +9,4 @@ audio-originals
 private-demos/*.wav
 .env
 .env.*
+.data

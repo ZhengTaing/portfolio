@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { usePlayer, type PlaylistTrack } from '../lib/player'
 import { useCoverColor } from '../lib/useCoverColor'
 import { formatTime } from '../lib/usePlaylist'
+import { HeartButton } from './SongActions'
 
 const imageOf = (t?: PlaylistTrack) => t?.artwork?.src ?? t?.coverUrl
 const subtitleOf = (t?: PlaylistTrack) => t?.subtitle ?? (t?.demoArtist ? `Demo · ${t.demoArtist}` : 'Zheng Taing')
@@ -19,10 +20,23 @@ export function NowPlayingBar() {
   const queueRef = useRef<HTMLDivElement>(null)
   const track = p.current
   const accent = useCoverColor(imageOf(track))
+  const [hiddenToast, setHiddenToast] = useState<string>()
+  const [dragFrom, setDragFrom] = useState<number | null>(null)
+
+  // "Added to your queue" message for a few seconds after each add.
+  const toast = p.lastAdded && p.lastAdded.key !== hiddenToast ? p.lastAdded : undefined
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setHiddenToast(toast.key), 4000)
+    return () => clearTimeout(t)
+  }, [toast])
 
   useEffect(() => {
     if (!queueOpen) return
-    const onDown = (e: MouseEvent) => !queueRef.current?.contains(e.target as Node) && setQueueOpen(false)
+    const onDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!queueRef.current?.contains(target) && !target.closest?.('[data-queue-toggle]')) setQueueOpen(false)
+    }
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setQueueOpen(false)
     document.addEventListener('mousedown', onDown)
     document.addEventListener('keydown', onKey)
@@ -53,6 +67,24 @@ export function NowPlayingBar() {
         )}
         <div className="absolute inset-0 bg-black/65 backdrop-blur-xl" />
       </div>
+
+      {toast && (
+        <div role="status" className="label pointer-events-auto absolute -top-14 left-1/2 flex -translate-x-1/2 items-center gap-3 bg-white px-3.5 py-2 whitespace-nowrap text-black shadow-[0_10px_30px_rgb(0_0_0/0.4)] motion-safe:animate-[rise_.3s_ease-out_both]">
+          <span>
+            ✓ Added &ldquo;{toast.track.title}&rdquo; to your queue
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              p.removeFromQueue(toast.key)
+              setHiddenToast(toast.key)
+            }}
+            className="underline uppercase"
+          >
+            Undo
+          </button>
+        </div>
+      )}
 
       {/* Seek line along the top edge */}
       <input
@@ -95,6 +127,7 @@ export function NowPlayingBar() {
               <span className="truncate">{subtitleOf(track)}</span>
             </p>
           </div>
+          <HeartButton id={track.id} title={track.title} className="ml-1 hidden sm:grid" />
         </div>
 
         {/* Transport */}
@@ -123,6 +156,16 @@ export function NowPlayingBar() {
             className="grid size-9 place-items-center text-white/80 hover:text-white disabled:opacity-30"
           >
             ⏭
+          </button>
+          <button
+            type="button"
+            data-queue-toggle
+            aria-expanded={queueOpen}
+            aria-label={`Queue (${p.upNext.length})`}
+            onClick={() => setQueueOpen((o) => !o)}
+            className="relative grid size-9 place-items-center text-white/80 hover:text-white sm:hidden"
+          >
+            ☰{p.upNext.length > 0 && <span className="bg-accent text-ink absolute -top-0.5 -right-0.5 px-1 text-[0.6rem] font-bold">{p.upNext.length}</span>}
           </button>
           <button type="button" onClick={p.stop} aria-label="Close player" className="grid size-8 place-items-center text-white/60 hover:text-white sm:hidden">
             ✕
@@ -156,47 +199,101 @@ export function NowPlayingBar() {
               style={{ '--progress': `${p.volume * 100}%` } as CSSProperties}
             />
           </label>
-          <div ref={queueRef} className="relative">
+          <div className="relative">
             <button
               type="button"
+              data-queue-toggle
               aria-expanded={queueOpen}
               onClick={() => setQueueOpen((o) => !o)}
               className={`uppercase ${queueOpen ? 'text-accent' : 'hover:text-white'}`}
             >
-              Queue ({p.queue.length})
+              Queue{p.upNext.length > 0 && <span className="bg-accent text-ink ml-1.5 px-1.5 font-bold">{p.upNext.length}</span>}
             </button>
-            {queueOpen && (
-              <div className="absolute right-0 bottom-9 max-h-[22rem] w-80 overflow-y-auto bg-[#141414] py-2 shadow-[0_20px_50px_rgb(0_0_0/0.6)]">
-                <p className="px-4 pb-2 text-white/50">Up next</p>
-                <ol aria-label="Queue">
-                  {p.queue.map((t, i) => {
-                    const current = t.id === track.id
-                    return (
-                      <li key={t.id}>
-                        <button
-                          type="button"
-                          onClick={() => p.play(p.queue, t.id)}
-                          aria-current={current ? 'true' : undefined}
-                          className={`grid w-full grid-cols-[1.5rem_2rem_1fr] items-center gap-3 px-4 py-1.5 text-left normal-case ${current ? 'text-accent' : 'text-white hover:bg-white/5'}`}
-                        >
-                          <span className="tabular-nums text-white/50">{String(i + 1).padStart(2, '0')}</span>
-                          <span className="size-8 overflow-hidden bg-white/10">
-                            {imageOf(t) && <img src={imageOf(t)} alt="" loading="lazy" className="h-full w-full object-cover" />}
-                          </span>
-                          <span className="font-display truncate text-sm font-bold tracking-normal">{t.title}</span>
-                        </button>
-                      </li>
-                    )
-                  })}
-                </ol>
-              </div>
-            )}
           </div>
           <button type="button" onClick={p.stop} aria-label="Close player" className="text-base hover:text-white">
             ✕
           </button>
         </div>
       </div>
+      {queueOpen && (
+        <div ref={queueRef} className="label absolute right-2 bottom-full mb-3 max-h-[min(30rem,65vh)] w-[min(22rem,calc(100vw-1rem))] overflow-y-auto bg-[#141414] py-2 text-white/80 normal-case sm:right-6 shadow-[0_20px_50px_rgb(0_0_0/0.6)]">
+          <p className="flex justify-between px-4 pb-2 text-white/50 uppercase">
+            <span>Queue</span>
+            {p.upNext.length > 0 && (
+              <button type="button" onClick={p.clearQueue} className="uppercase hover:text-white">
+                Clear
+              </button>
+            )}
+          </p>
+          <p className="px-4 pt-1 pb-1 text-white/50 uppercase">Now playing</p>
+          <QueueRow track={track} label={subtitleOf(track)} current />
+
+          <p className="px-4 pt-3 pb-1 text-white/50 uppercase">Up next · you added ({p.upNext.length})</p>
+          {p.upNext.length === 0 ? (
+            <p className="px-4 pb-1 text-white/45">Tap “+ Queue” on any song, on any page.</p>
+          ) : (
+            <ol aria-label="Up next">
+              {p.upNext.map((q, i) => (
+                <li
+                  key={q.key}
+                  draggable
+                  onDragStart={() => setDragFrom(i)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={() => {
+                    if (dragFrom !== null) p.moveInQueue(dragFrom, i)
+                    setDragFrom(null)
+                  }}
+                  className={`flex items-center pr-3 ${dragFrom === i ? 'opacity-40' : ''}`}
+                >
+                  <span aria-hidden="true" className="cursor-grab pl-3 text-white/35">
+                    ⋮⋮
+                  </span>
+                  <button type="button" onClick={() => p.playFromQueue(q.key)} className="min-w-0 flex-1 text-left" aria-label={`Play ${q.track.title} now`}>
+                    <QueueRow track={q.track} label={q.sourceLabel} />
+                  </button>
+                  <button type="button" onClick={() => p.moveInQueue(i, i - 1)} disabled={i === 0} aria-label={`Move ${q.track.title} up`} className="px-1 text-white/50 hover:text-white disabled:opacity-20">
+                    ↑
+                  </button>
+                  <button type="button" onClick={() => p.moveInQueue(i, i + 1)} disabled={i === p.upNext.length - 1} aria-label={`Move ${q.track.title} down`} className="px-1 text-white/50 hover:text-white disabled:opacity-20">
+                    ↓
+                  </button>
+                  <button type="button" onClick={() => p.removeFromQueue(q.key)} aria-label={`Remove ${q.track.title} from queue`} className="px-1 text-base text-white/50 hover:text-white">
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ol>
+          )}
+
+          {p.laterInPlaylist.length > 0 && (
+            <>
+              <p className="px-4 pt-3 pb-1 text-white/50 uppercase">Then · rest of playlist</p>
+              <ol aria-label="Rest of playlist">
+                {p.laterInPlaylist.map((t) => (
+                  <li key={t.id}>
+                    <button type="button" onClick={() => p.play(p.queue, t.id)} className="w-full text-left opacity-70 hover:opacity-100">
+                      <QueueRow track={t} label={subtitleOf(t)} />
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            </>
+          )}
+        </div>
+      )}
     </section>
+  )
+}
+
+function QueueRow({ track, label, current = false }: { track: PlaylistTrack; label: string; current?: boolean }) {
+  const img = imageOf(track)
+  return (
+    <span className="flex items-center gap-3 px-4 py-1.5">
+      <span className="size-9 shrink-0 overflow-hidden bg-white/10">{img && <img src={img} alt="" loading="lazy" className="h-full w-full object-cover" />}</span>
+      <span className="min-w-0">
+        <span className={`font-display block truncate text-sm font-bold tracking-normal ${current ? 'text-accent' : 'text-white'}`}>{track.title}</span>
+        <span className="block truncate text-[0.625rem] tracking-[0.08em] text-white/50 uppercase">{label}</span>
+      </span>
+    </span>
   )
 }

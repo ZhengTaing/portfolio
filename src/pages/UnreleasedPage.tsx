@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { PitchBoard } from '../components/PitchBoard'
+import { clearFavorites, setFavorites } from '../lib/favorites'
 import type { Pitch } from '../lib/pitch'
 import { usePlayer } from '../lib/player'
 import { usePageMeta } from '../lib/usePageMeta'
@@ -9,17 +10,21 @@ type Demo = Pitch
 
 type State =
   | { kind: 'checking' }
-  | { kind: 'locked'; error?: string }
-  | { kind: 'unlocked'; demos: Demo[] }
+  | { kind: 'locked'; error?: string; ended?: boolean }
+  | { kind: 'unlocked'; demos: Demo[]; name?: string }
   | { kind: 'unavailable'; message: string }
 
 async function fetchDemos(): Promise<State> {
   try {
     const res = await fetch('/api/demos', { credentials: 'same-origin' })
-    if (res.status === 401) return { kind: 'locked' }
+    if (res.status === 401) {
+      const body = (await res.json().catch(() => ({}))) as { ended?: boolean }
+      return { kind: 'locked', ended: Boolean(body.ended) }
+    }
     if (!res.ok) return { kind: 'unavailable', message: 'The demos are not available right now.' }
-    const body = (await res.json()) as { demos: Demo[] }
-    return { kind: 'unlocked', demos: body.demos }
+    const body = (await res.json()) as { demos: Demo[]; me?: { name: string }; favorites?: string[] | null }
+    setFavorites(body.favorites ?? null)
+    return { kind: 'unlocked', demos: body.demos, name: body.me?.name }
   } catch {
     return { kind: 'unavailable', message: 'Could not reach the server. Check your connection and try again.' }
   }
@@ -28,7 +33,7 @@ async function fetchDemos(): Promise<State> {
 export default function UnreleasedPage() {
   usePageMeta({
     title: 'Unreleased',
-    description: 'Private demos. Password required.',
+    description: 'Private demos. Access code required.',
     path: '/music/unreleased',
   })
   const [state, setState] = useState<State>({ kind: 'checking' })
@@ -61,14 +66,18 @@ export default function UnreleasedPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ code: password }),
       })
       if (res.ok) {
         setPassword('')
         setState(await fetchDemos())
       } else if (res.status === 401) {
         setPassword('')
-        setState({ kind: 'locked', error: 'That password is not right.' })
+        setState({ kind: 'locked', error: 'That code is not right. Check it and try again.' })
+      } else if (res.status === 429) {
+        const { retryAfter = 60 } = (await res.json().catch(() => ({}))) as { retryAfter?: number }
+        const mins = Math.max(1, Math.ceil(retryAfter / 60))
+        setState({ kind: 'locked', error: `Too many tries. Wait ${mins} ${mins === 1 ? 'minute' : 'minutes'}, then try again.` })
       } else {
         setState({ kind: 'unavailable', message: 'The demos are not available right now.' })
       }
@@ -80,8 +89,11 @@ export default function UnreleasedPage() {
   }
 
   async function lock() {
-    // Demos need the password, so stop one if it's playing.
-    if (player.current?.audioUrl.startsWith('/api/demos')) player.stop()
+    // Demos need a code, so stop one if it's playing and drop any from the queue.
+    const isDemo = (url: string) => url.startsWith('/api/demos')
+    if (player.current && isDemo(player.current.audioUrl)) player.stop()
+    else player.removeFromQueueWhere((t) => isDemo(t.audioUrl))
+    clearFavorites()
     await fetch('/api/demos/logout', { method: 'POST', credentials: 'same-origin' }).catch(() => {})
     setState({ kind: 'locked' })
   }
@@ -114,17 +126,26 @@ export default function UnreleasedPage() {
 
       {state.kind === 'locked' && (
         <form onSubmit={unlock} className="max-w-md">
-          <p className="mb-6 text-[0.9375rem] leading-relaxed">
-            These are unfinished songs and demos shared with collaborators. Enter the password to listen.
-          </p>
+          {state.ended ? (
+            <div role="status" className="border-line mb-6 border p-4 text-[0.9375rem] leading-relaxed">
+              <p className="label text-accent mb-1">Access ended</p>
+              Your access to these demos has ended. If you think that&rsquo;s a mistake, get in touch for a new code.
+            </div>
+          ) : (
+            <p className="mb-6 text-[0.9375rem] leading-relaxed">
+              Demos and song pitches shared with collaborators. Enter your personal access code to listen.
+            </p>
+          )}
           <label htmlFor="demo-password" className="label mb-2 block">
-            Password
+            Access code
           </label>
           <div className="flex gap-2">
             <input
               id="demo-password"
               type="password"
-              autoComplete="current-password"
+              autoComplete="off"
+              placeholder="xxxx-xxxx-xxxx"
+              spellCheck={false}
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -141,6 +162,7 @@ export default function UnreleasedPage() {
               {state.error}
             </p>
           )}
+          <p className="label text-muted mt-4">Your code is just for you. Please don&rsquo;t share it.</p>
           <p className="label text-muted mt-8">
             Need access?{' '}
             <Link to="/about" className="link-underline">
@@ -160,10 +182,15 @@ export default function UnreleasedPage() {
               pitches={state.demos}
               toolbarStart={
                 <div className="label flex flex-wrap items-center gap-x-4 gap-y-1 py-2">
-                  <span className="text-muted">Please don&rsquo;t share or download these.</span>
+                  {state.name && (
+                    <span>
+                      <span aria-hidden="true">👋 </span>Signed in as <b>{state.name}</b>
+                    </span>
+                  )}
                   <button type="button" onClick={lock} className="link-underline uppercase">
-                    Lock page
+                    Sign out
                   </button>
+                  <span className="text-muted">Please don&rsquo;t share or download these.</span>
                 </div>
               }
             />
