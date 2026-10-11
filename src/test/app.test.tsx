@@ -359,3 +359,33 @@ describe('site-wide player', () => {
     expect(screen.queryByRole('region', { name: 'Now playing' })).not.toBeInTheDocument()
   })
 })
+
+describe('unreleased auto-lock', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('locks again when the visitor leaves the page', async () => {
+    let authed = true
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url === '/api/demos/logout') {
+        authed = false
+        return new Response('{}', { status: 200 })
+      }
+      if (url === '/api/demos') {
+        return authed
+          ? new Response(JSON.stringify({ demos: [{ id: 'd1', title: 'Secret Song', audioUrl: '/api/demos/audio?id=d1', status: 'available' }], favorites: [] }), { status: 200 })
+          : new Response('{}', { status: 401 })
+      }
+      return new Response('{}', { status: 404 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const user = userEvent.setup()
+    renderAt('/music/unreleased')
+
+    await screen.findByRole('list', { name: 'Song pitches' })
+    expect(fetchMock).not.toHaveBeenCalledWith('/api/demos/logout', expect.anything())
+
+    await user.click(within(screen.getByRole('navigation', { name: 'Breadcrumb' })).getByRole('link', { name: 'Music' }))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/demos/logout', expect.objectContaining({ method: 'POST' })))
+    expect(authed).toBe(false)
+  })
+})

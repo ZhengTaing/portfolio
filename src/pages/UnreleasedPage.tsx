@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { PitchBoard } from '../components/PitchBoard'
 import { clearFavorites, setFavorites } from '../lib/favorites'
@@ -28,6 +28,15 @@ async function fetchDemos(): Promise<State> {
   } catch {
     return { kind: 'unavailable', message: 'Could not reach the server. Check your connection and try again.' }
   }
+}
+
+/** Demos need a code, so stop one if it's playing, drop any from the queue and end the session. */
+async function signOut(player: ReturnType<typeof usePlayer>) {
+  const isDemo = (url: string) => url.startsWith('/api/demos')
+  if (player.current && isDemo(player.current.audioUrl)) player.stop()
+  else player.removeFromQueueWhere((t) => isDemo(t.audioUrl))
+  clearFavorites()
+  await fetch('/api/demos/logout', { method: 'POST', credentials: 'same-origin', keepalive: true }).catch(() => {})
 }
 
 export default function UnreleasedPage() {
@@ -89,14 +98,27 @@ export default function UnreleasedPage() {
   }
 
   async function lock() {
-    // Demos need a code, so stop one if it's playing and drop any from the queue.
-    const isDemo = (url: string) => url.startsWith('/api/demos')
-    if (player.current && isDemo(player.current.audioUrl)) player.stop()
-    else player.removeFromQueueWhere((t) => isDemo(t.audioUrl))
-    clearFavorites()
-    await fetch('/api/demos/logout', { method: 'POST', credentials: 'same-origin' }).catch(() => {})
+    await signOut(player)
     setState({ kind: 'locked' })
   }
+
+  // Leaving the page locks it again: going to another page, closing the tab or
+  // reloading all mean the access code has to be entered next time.
+  const unlocked = state.kind === 'unlocked'
+  const latest = useRef({ unlocked, player })
+  useEffect(() => {
+    latest.current = { unlocked, player }
+  })
+  useEffect(() => {
+    const onPageHide = () => {
+      if (latest.current.unlocked) navigator.sendBeacon?.('/api/demos/logout')
+    }
+    window.addEventListener('pagehide', onPageHide)
+    return () => {
+      window.removeEventListener('pagehide', onPageHide)
+      if (latest.current.unlocked) void signOut(latest.current.player)
+    }
+  }, [])
 
   return (
     <div data-theme="ink" className="bg-bg text-fg relative isolate min-h-[70vh] px-4 pt-12 pb-24 [clip-path:inset(0)] sm:px-8">
