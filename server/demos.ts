@@ -362,7 +362,8 @@ export async function list(request: Request) {
   const demos = (await loadDemos()).filter((d) => !d.hidden && canHear(person, d.id))
   const favs = await favoritesOf(person.id)
   return json({
-    me: { name: person.name },
+    // No greeting for the old shared password.
+    me: person.id === LEGACY_ID ? null : { name: person.name },
     favorites: favs ? favs.filter((id) => demos.some((d) => d.id === id)) : null,
     demos: demos.map(toPublic),
   })
