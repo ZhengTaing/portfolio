@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { artworkCategories } from '../content/artworks'
+import { prefersReducedMotion } from '../lib/motion'
+import { hapticTick } from '../lib/tactile'
 import type { Artwork } from '../types/content'
 
 /**
@@ -25,6 +27,54 @@ export function ArtCarousel({ items, label = 'Featured artwork' }: { items: Artw
     window.addEventListener('resize', update)
     return () => window.removeEventListener('resize', update)
   }, [update])
+
+  // When a swipe settles on a new slide: a tiny press on that slide and, where
+  // the device supports it, one light haptic tick.
+  useEffect(() => {
+    const el = trackRef.current
+    if (!el) return
+    let touched = false
+    let settled = 0
+    let timer = 0
+    const slideAt = () => {
+      const slides = [...el.children] as HTMLElement[]
+      let best = 0
+      slides.forEach((s, i) => {
+        if (Math.abs(s.offsetLeft - el.offsetLeft - el.scrollLeft) < Math.abs(slides[best].offsetLeft - el.offsetLeft - el.scrollLeft)) best = i
+      })
+      return best
+    }
+    const onSettle = () => {
+      const i = slideAt()
+      if (i === settled) return
+      settled = i
+      if (!touched) return
+      touched = false
+      hapticTick()
+      const slide = el.children[i] as HTMLElement | undefined
+      if (slide && !prefersReducedMotion()) {
+        slide.classList.remove('snap-settle')
+        void slide.offsetWidth
+        slide.classList.add('snap-settle')
+      }
+    }
+    const onTouch = () => (touched = true)
+    // scrollend where supported, otherwise a short pause in scrolling.
+    const hasScrollEnd = 'onscrollend' in window
+    const onScroll = () => {
+      window.clearTimeout(timer)
+      timer = window.setTimeout(onSettle, 140)
+    }
+    el.addEventListener('touchstart', onTouch, { passive: true })
+    if (hasScrollEnd) el.addEventListener('scrollend', onSettle)
+    else el.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      window.clearTimeout(timer)
+      el.removeEventListener('touchstart', onTouch)
+      el.removeEventListener('scrollend', onSettle)
+      el.removeEventListener('scroll', onScroll)
+    }
+  }, [items])
 
   function step(direction: 1 | -1) {
     const el = trackRef.current

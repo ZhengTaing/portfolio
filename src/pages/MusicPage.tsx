@@ -203,7 +203,7 @@ export default function MusicPage() {
         </div>
       </section>
 
-      <div aria-hidden="true" data-word="Sound" className="ghost-word display pointer-events-none absolute hidden md:block top-[18rem] -right-[0.1em] text-[26vw] whitespace-nowrap text-white/[0.05]" />
+      <div aria-hidden="true" data-word="Sound" data-parallax="0.08" className="ghost-word display pointer-events-none absolute hidden md:block top-[18rem] -right-[0.1em] text-[26vw] whitespace-nowrap text-white/[0.05]" />
     </div>
   )
 }

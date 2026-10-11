@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom'
 import { PlayerProvider, usePlayer } from '../lib/player'
 import { themeForPath } from '../lib/site'
 import { useScrollReveal } from '../lib/useScrollReveal'
+import { useTactileScroll } from '../lib/tactile'
 import { CustomCursor } from './CustomCursor'
 import { Footer } from './Footer'
 import { Navigation } from './Navigation'
@@ -34,6 +35,7 @@ export function SiteLayout() {
   const firstRender = useRef(true)
   const shellRef = useRef<HTMLDivElement>(null)
   useScrollReveal(shellRef)
+  useTactileScroll(pathname)
 
   // Each section is its own "room": apply its palette to the whole document
   // so overscroll areas match too.

@@ -643,3 +643,57 @@ html[data-cursor-state='native'] .cursor-ring {
     transform: none !important;
   }
 }
+
+/* ---- Tactile scrolling (see lib/tactile.ts) ----------------------------------
+   Cards trail the scroll by up to 3px, using `translate` so it stacks with the
+   hover lift. Themed sections send one soft ripple from their top edge. */
+.card-lift {
+  translate: 0 var(--scroll-nudge, 0px);
+}
+.section-ripple {
+  position: relative;
+}
+.section-ripple::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: min(120vw, 90rem);
+  height: 14rem;
+  background: radial-gradient(ellipse 50% 100% at 50% 0%, color-mix(in srgb, var(--room-accent) 16%, transparent), transparent 70%);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-50%) scale(0.2, 0.1);
+  transform-origin: 50% 0;
+  animation: section-ripple 1.4s var(--ease-out) forwards;
+}
+@keyframes section-ripple {
+  25% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-50%) scale(1, 1);
+  }
+}
+/* A slide settling into place after a swipe gives a tiny press. */
+@keyframes snap-settle {
+  40% {
+    transform: scale(0.985);
+  }
+  to {
+    transform: none;
+  }
+}
+.snap-settle {
+  animation: snap-settle 320ms var(--ease-out);
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-lift {
+    translate: none;
+  }
+  .section-ripple::before,
+  .snap-settle {
+    animation: none;
+  }
+}

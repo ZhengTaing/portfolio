@@ -65,7 +65,7 @@ export default function HomePage() {
             )}
           </div>
         </div>
-        <div aria-hidden="true" data-word="Sound" className="ghost-word display pointer-events-none absolute -bottom-[0.18em] left-4 text-[26vw] whitespace-nowrap text-white/15" />
+        <div aria-hidden="true" data-word="Sound" data-parallax="0.08" className="ghost-word display pointer-events-none absolute -bottom-[0.18em] left-4 text-[26vw] whitespace-nowrap text-white/15" />
       </section>
 
       <section data-theme="graphite" aria-labelledby="home-lens" className="bg-bg text-fg px-4 py-20 sm:px-8 md:py-28">

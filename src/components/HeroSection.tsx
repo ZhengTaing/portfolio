@@ -45,7 +45,7 @@ export function HeroSection() {
         data-theme="ink"
         className="text-fg relative isolate flex h-[100svh] min-h-[32rem] flex-col justify-end overflow-hidden bg-[#1a140e] px-4 pb-8 sm:px-8 sm:pb-10"
       >
-        <div className="absolute inset-0 -z-20 overflow-hidden motion-safe:animate-[ken-burns_2.6s_cubic-bezier(0.2,0.7,0.2,1)_both]">
+        <div data-parallax="0.12" className="absolute inset-0 -z-20 overflow-hidden motion-safe:animate-[ken-burns_2.6s_cubic-bezier(0.2,0.7,0.2,1)_both]">
         <div className="hero-drift h-full w-full">
         <img
           src={photo.src}
