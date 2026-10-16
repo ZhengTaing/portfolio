@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { actTypes, asList, generatedCover, genres, markets, statuses, type PitchStatus } from '../lib/pitch'
+import { actTypes, asList, generatedCover, genres, markets, statuses, type PitchStatus, type PitchTags } from '../lib/pitch'
 import { usePageMeta } from '../lib/usePageMeta'
 
 /** A demo as the admin page sees it (includes private notes). */
@@ -26,7 +26,12 @@ interface AdminDemo {
   hidden?: boolean
   /** Uploaded on this page (can be deleted). */
   uploaded?: boolean
+  /** Every version, with the stored file (sent back unchanged) and a link to listen. */
+  versions?: { id: string; label: string; file: string; duration?: string; audioUrl: string }[]
+  defaultVersion?: string
 }
+
+const DEFAULT_TAGS: PitchTags = { market: markets, actType: actTypes, genre: genres }
 
 interface AdminPerson {
   id: string
@@ -254,22 +259,28 @@ function StatusSelect({ value, onChange, label }: { value: PitchStatus; onChange
 
 function useDemos() {
   const [demos, setDemos] = useState<AdminDemo[] | null>(null)
+  const [tags, setTags] = useState<PitchTags>(DEFAULT_TAGS)
   const reload = useCallback(async () => {
-    const { data } = await api<{ demos: AdminDemo[] }>('demos')
+    const { data } = await api<{ demos: AdminDemo[]; tags?: PitchTags }>('demos')
     setDemos(data.demos ?? [])
+    if (data.tags) setTags(data.tags)
   }, [])
   useEffect(() => {
     let live = true
-    api<{ demos: AdminDemo[] }>('demos').then(({ data }) => live && setDemos(data.demos ?? []))
+    api<{ demos: AdminDemo[]; tags?: PitchTags }>('demos').then(({ data }) => {
+      if (!live) return
+      setDemos(data.demos ?? [])
+      if (data.tags) setTags(data.tags)
+    })
     return () => {
       live = false
     }
   }, [])
-  return { demos, setDemos, reload }
+  return { demos, setDemos, tags, setTags, reload }
 }
 
 function DemosTab({ storeReady, uploadsReady }: { storeReady: boolean; uploadsReady: boolean }) {
-  const { demos, setDemos, reload } = useDemos()
+  const { demos, setDemos, tags, setTags, reload } = useDemos()
   const [q, setQ] = useState('')
   const [editing, setEditing] = useState<AdminDemo | null>(null)
   const [adding, setAdding] = useState(false)
@@ -283,6 +294,11 @@ function DemosTab({ storeReady, uploadsReady }: { storeReady: boolean; uploadsRe
       [d.title, d.demoArtist, ...(d.targetArtists ?? []), ...asList(d.genre), ...asList(d.market)].some((v) => v?.toLowerCase().includes(needle)),
     )
   }, [demos, q])
+
+  const close = () => {
+    setEditing(null)
+    setAdding(false)
+  }
 
   async function save(id: string, patch: Partial<AdminDemo>) {
     setDemos((list) => list?.map((d) => (d.id === id ? { ...d, ...patch } : d)) ?? null)
@@ -344,7 +360,10 @@ function DemosTab({ storeReady, uploadsReady }: { storeReady: boolean; uploadsRe
                       <p className="font-display font-extrabold">
                         {d.title} {d.hidden && <span className="label text-muted font-normal">(hidden)</span>}
                       </p>
-                      <p className="label text-muted">{d.demoArtist || 'Zheng Taing'}</p>
+                      <p className="label text-muted">
+                        {d.demoArtist || 'Zheng Taing'}
+                        {(d.versions?.length ?? 0) > 1 && ` · ${d.versions!.length} versions`}
+                      </p>
                     </div>
                   </div>
                 </td>
@@ -367,57 +386,37 @@ function DemosTab({ storeReady, uploadsReady }: { storeReady: boolean; uploadsRe
         </table>
       </div>
 
-      {editing && (
+      {(editing || adding) && (
         <DemoEditor
-          demo={editing}
+          key={editing?.id ?? 'new'}
+          demo={editing ?? { id: 'new', title: '', status: 'available' }}
           storeReady={storeReady}
-          onClose={() => setEditing(null)}
-          onSave={async (patch) => {
-            await save(editing.id, patch)
-            setEditing(null)
+          uploadsReady={uploadsReady}
+          tags={tags}
+          onTagsChange={(t) => {
+            setTags(t)
+            // Renames and removals change songs too.
+            void reload()
+          }}
+          onClose={close}
+          onDone={async (message) => {
+            close()
+            setSaved(message)
+            setTimeout(() => setSaved(''), 3000)
+            await reload()
           }}
           onDelete={
-            editing.uploaded
+            editing?.uploaded
               ? async () => {
-                  if (!confirm(`Delete ${editing.title} for good? The song file is removed too.`)) return
+                  if (!confirm(`Delete ${editing.title} for good? Its song files and cover are removed too.`)) return
                   await api('demo-delete', { id: editing.id })
-                  setEditing(null)
+                  close()
                   await reload()
                 }
               : undefined
           }
         />
       )}
-      {adding &&
-        (uploadsReady ? (
-          <DemoEditor
-            demo={{ id: 'new', title: '', status: 'available' }}
-            storeReady={storeReady}
-            onClose={() => setAdding(false)}
-            onSave={async () => {}}
-            onCreated={async () => {
-              setAdding(false)
-              setSaved('Song added. Visitors see it right away.')
-              setTimeout(() => setSaved(''), 3000)
-              await reload()
-            }}
-          />
-        ) : (
-          <Drawer title="Add a demo" onClose={() => setAdding(false)}>
-            <p className="text-sm leading-relaxed">
-              Uploading from this page turns on once song storage (Cloudflare R2) is connected. Until then, add songs from your Mac:
-            </p>
-            <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-relaxed">
-              <li>
-                Put the song file (WAV, MP3 or M4A) in the <code>private-demos</code> folder.
-              </li>
-              <li>
-                Run <code>npm run demos</code>, then <code>npm run deploy</code>.
-              </li>
-              <li>The song shows up here. Click Edit to fill in status, targets, genre and notes.</li>
-            </ol>
-          </Drawer>
-        ))}
     </section>
   )
 }
@@ -453,14 +452,91 @@ function Field({ label, children, hint }: { label: string; children: ReactNode; 
   )
 }
 
-function ChipPicker({ label, options, value, onChange }: { label: string; options: string[]; value: string[]; onChange: (v: string[]) => void }) {
+type TagGroup = keyof PitchTags
+
+/**
+ * Pick values for one list (market, act type or genre). "+ Add" saves a new
+ * value for every song; "Edit list" renames or removes values everywhere.
+ */
+function ChipPicker({
+  label,
+  group,
+  options,
+  value,
+  onChange,
+  onTagsChange,
+}: {
+  label: string
+  group: TagGroup
+  options: string[]
+  value: string[]
+  onChange: (v: string[]) => void
+  /** Called with the saved lists after a value is added, renamed or removed. */
+  onTagsChange: (tags: PitchTags, change?: { from: string; to: string | null }) => void
+}) {
+  const [draft, setDraft] = useState('')
+  const [managing, setManaging] = useState(false)
+  const [error, setError] = useState('')
+  const noun = label.toLowerCase()
+
+  async function change(op: 'add' | 'rename' | 'remove', name: string, to?: string) {
+    setError('')
+    const { status, data } = await api<{ tags?: PitchTags; value?: string; error?: string }>('tags', { group, op, value: name, to })
+    if (status !== 200 || !data.tags) {
+      setError(data.error ?? 'Could not save. Is the database connected?')
+      return null
+    }
+    onTagsChange(data.tags, op === 'add' ? undefined : { from: name, to: op === 'rename' ? (data.value ?? to ?? null) : null })
+    return data.value ?? name
+  }
+
+  async function add() {
+    const name = draft.trim()
+    if (!name) return
+    const saved = await change('add', name)
+    if (saved) {
+      setDraft('')
+      if (!value.includes(saved)) onChange([...value, saved])
+    }
+  }
+
   return (
     <fieldset>
-      <legend className="label text-muted mb-1.5">{label}</legend>
+      <legend className="label text-muted mb-1.5 flex w-full items-center justify-between gap-2">
+        <span>{label}</span>
+        <button type="button" onClick={() => setManaging((m) => !m)} className="label hover:text-white uppercase underline-offset-2 hover:underline">
+          {managing ? 'Done editing' : 'Edit list'}
+        </button>
+      </legend>
       <div className="flex flex-wrap gap-1.5">
         {options.map((o) => {
           const on = value.includes(o)
-          return (
+          return managing ? (
+            <span key={o} className="label inline-flex items-center gap-1 border border-white/25 py-0.5 pr-1 pl-2 uppercase">
+              {o}
+              <button
+                type="button"
+                aria-label={`Rename ${o}`}
+                className="px-1 text-white/70 hover:text-white"
+                onClick={async () => {
+                  const to = prompt(`Rename "${o}" to:`, o)?.trim()
+                  if (to && to !== o) await change('rename', o, to)
+                }}
+              >
+                ✎
+              </button>
+              <button
+                type="button"
+                aria-label={`Remove ${o}`}
+                className="px-1 text-white/70 hover:text-[#ff6b6b]"
+                onClick={async () => {
+                  if (confirm(`Remove "${o}" from the ${noun} list? Songs tagged with it lose the tag.`)) await change('remove', o)
+                }}
+              >
+                ✕
+              </button>
+            </span>
+          ) : (
             <button
               key={o}
               type="button"
@@ -472,7 +548,31 @@ function ChipPicker({ label, options, value, onChange }: { label: string; option
             </button>
           )
         })}
+        <span className="inline-flex">
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                void add()
+              }
+            }}
+            placeholder={`New ${noun}`}
+            aria-label={`New ${noun}`}
+            maxLength={40}
+            className="label w-28 border border-dashed border-white/40 bg-transparent px-2 py-1 text-white outline-none focus:border-white"
+          />
+          <button type="button" onClick={add} disabled={!draft.trim()} className="label border border-l-0 border-dashed border-white/40 px-2 uppercase hover:bg-white hover:text-black disabled:opacity-40">
+            + Add
+          </button>
+        </span>
       </div>
+      {error && (
+        <p role="alert" className="text-accent mt-1 text-xs">
+          {error}
+        </p>
+      )}
     </fieldset>
   )
 }
@@ -512,25 +612,75 @@ const titleFromFile = (name: string) =>
     .replace(/\s*\((ai demo|v\d+)\)\s*/gi, ' ')
     .trim()
 
+/** A label guessed from the file name: "Song (ai demo).mp3" → "AI demo", "Song V2.m4a" → "V2". */
+function labelFromFile(name: string, fallback: string) {
+  if (/ai\s*demo/i.test(name)) return 'AI demo'
+  const v = name.match(/\bv(\d+)\b/i)
+  return v ? `V${v[1]}` : fallback
+}
+
+const AUDIO_ACCEPT = 'audio/*,.m4a,.mp3,.wav,.flac,.ogg,.aac'
+const COVER_ACCEPT = 'image/jpeg,image/png,image/webp'
+const LABEL_IDEAS = ['AI demo', 'V1', 'V2', 'V3', 'Final', 'Acoustic', 'Rough']
+
+/** One version row in the editor. `upload` is a new file waiting to be sent when you save. */
+interface VersionRow {
+  id: string
+  label: string
+  file?: string
+  duration?: string
+  audioUrl?: string
+  upload?: File
+  preview?: string
+}
+
+type CoverChange = { kind: 'keep' } | { kind: 'new'; file: File; preview: string } | { kind: 'remove' }
+
+const newId = () => `v${Math.random().toString(36).slice(2, 8)}`
+
+/** A hidden file input behind a button-looking label. */
+function FileButton({ accept, label, onFile, className = btnGhost }: { accept: string; label: string; onFile: (f: File) => void; className?: string }) {
+  return (
+    <label className={`${className} inline-block cursor-pointer`}>
+      {label}
+      <input
+        type="file"
+        accept={accept}
+        className="sr-only"
+        onChange={(e) => {
+          const f = e.target.files?.[0]
+          if (f) onFile(f)
+          e.target.value = ''
+        }}
+      />
+    </label>
+  )
+}
+
 function DemoEditor({
   demo,
   storeReady,
+  uploadsReady,
+  tags,
+  onTagsChange,
   onClose,
-  onSave,
+  onDone,
   onDelete,
-  onCreated,
 }: {
   demo: AdminDemo
   storeReady: boolean
+  uploadsReady: boolean
+  tags: PitchTags
+  onTagsChange: (tags: PitchTags) => void
   onClose: () => void
-  onSave: (p: Partial<AdminDemo>) => Promise<void>
+  /** After a successful save. */
+  onDone: (message: string) => Promise<void>
   onDelete?: () => Promise<void>
-  /** Set for a new song: upload the files, then create it. */
-  onCreated?: () => Promise<void>
 }) {
-  const adding = Boolean(onCreated)
-  const [audioFile, setAudioFile] = useState<File | null>(null)
-  const [coverFile, setCoverFile] = useState<File | null>(null)
+  const adding = demo.id === 'new'
+  const [cover, setCover] = useState<CoverChange>({ kind: 'keep' })
+  const [versions, setVersions] = useState<VersionRow[]>(() => (demo.versions ?? []).map((v) => ({ ...v })))
+  const [mainId, setMainId] = useState(demo.defaultVersion ?? demo.versions?.[0]?.id ?? '')
   const [progress, setProgress] = useState('')
   const [error, setError] = useState('')
   const [f, setF] = useState({
@@ -543,48 +693,99 @@ function DemoEditor({
   const [busy, setBusy] = useState(false)
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((x) => ({ ...x, [k]: v }))
 
+  // Free the in-browser previews when the drawer closes.
+  const previews = useRef<string[]>([])
+  useEffect(() => () => previews.current.forEach((u) => URL.revokeObjectURL(u)), [])
+  const preview = (file: File) => {
+    const u = URL.createObjectURL(file)
+    previews.current.push(u)
+    return u
+  }
+
+  const patchVersion = (id: string, patch: Partial<VersionRow>) => setVersions((list) => list.map((v) => (v.id === id ? { ...v, ...patch } : v)))
+  function addVersion(file: File) {
+    const id = newId()
+    setVersions((list) => [...list, { id, label: labelFromFile(file.name, list.length ? `V${list.length + 1}` : ''), upload: file, preview: preview(file) }])
+    if (!versions.length) setMainId(id)
+    if (!f.title) set('title', titleFromFile(file.name))
+  }
+  function move(i: number, by: number) {
+    setVersions((list) => {
+      const next = [...list]
+      const [v] = next.splice(i, 1)
+      next.splice(i + by, 0, v)
+      return next
+    })
+  }
+  function removeVersion(id: string) {
+    const rest = versions.filter((v) => v.id !== id)
+    setVersions(rest)
+    if (mainId === id) setMainId(rest[0]?.id ?? '')
+  }
+
+  /** Keep this song's ticked values in step when a value is renamed or removed from a list. */
+  function tagsChanged(group: TagGroup, next: PitchTags, change?: { from: string; to: string | null }) {
+    onTagsChange(next)
+    if (!change) return
+    setF((x) => ({ ...x, [group]: x[group].flatMap((v) => (v === change.from ? (change.to ? [change.to] : []) : [v])) }))
+  }
+
   async function submit(e: FormEvent) {
     e.preventDefault()
     setBusy(true)
     setError('')
-    const patch: Partial<AdminDemo> = {
-      title: f.title,
-      demoArtist: f.demoArtist,
-      note: f.note,
-      targetArtists: f.targets.split(',').map((s) => s.trim()).filter(Boolean),
-      market: f.market,
-      actType: f.actType,
-      genre: f.genre,
-      key: f.key,
-      bpm: f.bpm,
-      status: f.status,
-      holdUntil: f.holdUntil,
-      placedWith: f.placedWith,
-      pitchNotes: f.pitchNotes,
-      privateNotes: f.privateNotes,
-      reservation: f.reservation,
-      hidden: f.hidden,
-    }
-    if (!adding) {
-      await onSave(patch)
-      setBusy(false)
-      return
-    }
     try {
-      if (!audioFile) throw new Error('Choose the song file.')
+      if (!versions.length) throw new Error('Add the song file.')
       const send = async (file: File, kind: 'audio' | 'cover', label: string) => {
         const { status, data } = await api<{ url?: string; file?: string; error?: string }>('upload-url', { filename: file.name, kind })
         if (status !== 200 || !data.url || !data.file) throw new Error(data.error ?? 'Could not start the upload.')
         await uploadFile(data.url, file, (p) => setProgress(`Uploading ${label}… ${Math.round(p * 100)}%`))
         return data.file
       }
-      const duration = await audioLength(audioFile)
-      const file = await send(audioFile, 'audio', 'song')
-      const cover = coverFile ? await send(coverFile, 'cover', 'cover') : undefined
+      const sent: VersionRow[] = []
+      for (const v of versions) {
+        if (!v.upload) {
+          sent.push(v)
+          continue
+        }
+        const duration = await audioLength(v.upload)
+        const file = await send(v.upload, 'audio', v.label || 'song')
+        sent.push({ ...v, file, duration, upload: undefined })
+      }
+      // Keep finished uploads if a later step fails, so saving again doesn't resend them.
+      setVersions(sent)
+      let coverPath: string | undefined
+      if (cover.kind === 'new') coverPath = await send(cover.file, 'cover', 'cover')
+      else if (cover.kind === 'remove') coverPath = ''
       setProgress('Saving…')
-      const { status, data } = await api<{ error?: string }>('demo-create', { file, cover, duration, patch })
+
+      const media = {
+        versions: sent.map(({ id, label, file, duration }) => ({ id, label, file, duration })),
+        defaultVersion: mainId,
+        ...(coverPath !== undefined ? { cover: coverPath } : {}),
+      }
+      const patch = {
+        title: f.title,
+        demoArtist: f.demoArtist,
+        targetArtists: f.targets.split(',').map((s) => s.trim()).filter(Boolean),
+        market: f.market,
+        actType: f.actType,
+        genre: f.genre,
+        key: f.key,
+        bpm: f.bpm,
+        status: f.status,
+        holdUntil: f.holdUntil,
+        placedWith: f.placedWith,
+        pitchNotes: f.pitchNotes,
+        privateNotes: f.privateNotes,
+        reservation: f.reservation,
+        hidden: f.hidden,
+      }
+      const { status, data } = adding
+        ? await api<{ error?: string }>('demo-create', { ...media, patch })
+        : await api<{ error?: string }>('demo', { id: demo.id, patch: { ...patch, ...media } })
       if (status !== 200) throw new Error(data.error ?? 'Could not save the song.')
-      await onCreated!()
+      await onDone(adding ? 'Song added. Visitors see it right away.' : 'Saved. Visitors see it right away.')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.')
     } finally {
@@ -593,52 +794,113 @@ function DemoEditor({
     }
   }
 
+  const coverShown = cover.kind === 'new' ? { id: demo.id, coverUrl: cover.preview } : cover.kind === 'remove' ? { id: demo.id } : demo
+
   return (
     <Drawer title={adding ? 'Add demo' : `Edit ${demo.title}`} onClose={onClose}>
       <form onSubmit={submit} className="grid gap-4">
-        {adding ? (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="grid cursor-pointer place-items-center gap-1 border border-dashed border-white/40 p-4 text-center text-sm hover:border-white">
-              <span className="label">🎵 Song file</span>
-              <span className="text-muted text-xs">{audioFile ? `${audioFile.name} · ${(audioFile.size / 1e6).toFixed(1)} MB` : 'MP3, M4A or WAV'}</span>
-              <input
-                type="file"
-                accept="audio/*,.m4a,.mp3,.wav,.flac,.ogg,.aac"
-                required
-                className="sr-only"
-                onChange={(e) => {
-                  const file = e.target.files?.[0] ?? null
-                  setAudioFile(file)
-                  if (file && !f.title) set('title', titleFromFile(file.name))
-                }}
-              />
-            </label>
-            <label className="grid cursor-pointer place-items-center gap-1 border border-dashed border-white/40 p-4 text-center text-sm hover:border-white">
-              <span className="label">🖼 Cover (optional)</span>
-              <span className="text-muted text-xs">{coverFile ? coverFile.name : 'JPG, PNG or WebP'}</span>
-              <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)} />
-            </label>
-            <p className="text-muted text-xs sm:col-span-2">Tip: MP3 or M4A streams fastest. WAV works but is about 10× bigger.</p>
-          </div>
-        ) : (
-          <div className="flex items-center gap-4">
-            <Cover d={demo} className="size-20 shrink-0" />
-            <p className="text-muted text-sm">
-              {demo.uploaded ? 'To change the audio, delete this song and add it again.' : 'To change the audio or cover, replace the file in private-demos/ and redeploy.'}
-            </p>
-          </div>
+        {!uploadsReady && (
+          <p className="border border-[#ffb020]/50 p-3 text-sm">Changing files turns on once song storage (Cloudflare R2) is connected. You can still edit everything else.</p>
         )}
+
+        {/* Cover */}
+        <div className="flex items-center gap-4">
+          <Cover d={coverShown} className="size-24 shrink-0" />
+          <div className="grid gap-2">
+            <p className="label text-muted">Cover</p>
+            <div className="flex flex-wrap gap-2">
+              {uploadsReady && (
+                <FileButton
+                  accept={COVER_ACCEPT}
+                  label={coverShown.coverUrl ? 'Replace cover' : 'Add cover'}
+                  onFile={(file) => setCover({ kind: 'new', file, preview: preview(file) })}
+                />
+              )}
+              {coverShown.coverUrl && (
+                <button type="button" onClick={() => setCover(demo.coverUrl ? { kind: 'remove' } : { kind: 'keep' })} className={btnGhost}>
+                  Remove
+                </button>
+              )}
+              {cover.kind !== 'keep' && !adding && (
+                <button type="button" onClick={() => setCover({ kind: 'keep' })} className="label text-muted uppercase hover:text-white">
+                  Undo
+                </button>
+              )}
+            </div>
+            <p className="text-muted text-xs">{cover.kind === 'new' ? cover.file.name : cover.kind === 'remove' ? 'A generated color cover is shown instead.' : 'JPG, PNG or WebP'}</p>
+          </div>
+        </div>
+
+        {/* Versions */}
+        <fieldset className="grid gap-2">
+          <legend className="label text-muted mb-1.5">Versions {versions.length > 1 && <span className="normal-case">· visitors pick with pills on the card</span>}</legend>
+          {versions.length === 0 && <p className="text-muted text-sm">Add the song file to start. You can add more versions (AI demo, V1, V2…) any time.</p>}
+          <datalist id="version-labels">
+            {LABEL_IDEAS.map((l) => (
+              <option key={l} value={l} />
+            ))}
+          </datalist>
+          <ol className="grid gap-2">
+            {versions.map((v, i) => (
+              <li key={v.id} className={`grid gap-2 border p-3 ${v.id === mainId ? 'border-white/60' : 'border-white/15'}`}>
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    className={inputCls.replace('w-full', 'w-36')}
+                    value={v.label}
+                    list="version-labels"
+                    placeholder={`Version ${i + 1}`}
+                    aria-label={`Name of version ${i + 1}`}
+                    maxLength={40}
+                    onChange={(e) => patchVersion(v.id, { label: e.target.value })}
+                  />
+                  <label className="label flex items-center gap-1.5 uppercase">
+                    <input type="radio" name="main-version" checked={v.id === mainId} onChange={() => setMainId(v.id)} />
+                    Plays first
+                  </label>
+                  <span className="ml-auto flex items-center gap-1">
+                    <button type="button" onClick={() => move(i, -1)} disabled={i === 0} aria-label={`Move ${v.label || `version ${i + 1}`} up`} className="px-1.5 text-white/70 hover:text-white disabled:opacity-30">
+                      ↑
+                    </button>
+                    <button type="button" onClick={() => move(i, 1)} disabled={i === versions.length - 1} aria-label={`Move ${v.label || `version ${i + 1}`} down`} className="px-1.5 text-white/70 hover:text-white disabled:opacity-30">
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeVersion(v.id)}
+                      disabled={versions.length === 1 && !adding}
+                      aria-label={`Remove ${v.label || `version ${i + 1}`}`}
+                      title={versions.length === 1 && !adding ? 'A song needs at least one version' : undefined}
+                      className="px-1.5 text-white/70 hover:text-[#ff6b6b] disabled:opacity-30"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <audio controls preload="none" src={v.preview ?? v.audioUrl} className="h-8 min-w-0 flex-1" />
+                  {uploadsReady && <FileButton accept={AUDIO_ACCEPT} label="Replace file" onFile={(file) => patchVersion(v.id, { upload: file, preview: preview(file) })} />}
+                </div>
+                <p className="text-muted text-xs">{v.upload ? `New file: ${v.upload.name} · ${(v.upload.size / 1e6).toFixed(1)} MB (uploads when you save)` : v.duration ? `Length ${v.duration}` : ''}</p>
+              </li>
+            ))}
+          </ol>
+          {uploadsReady && (
+            <FileButton
+              accept={AUDIO_ACCEPT}
+              label={versions.length ? '+ Add version' : '🎵 Add song file'}
+              onFile={addVersion}
+              className="label border border-dashed border-white/40 p-3 text-center uppercase hover:border-white"
+            />
+          )}
+          <p className="text-muted text-xs">Tip: MP3 or M4A streams fastest. WAV works but is about 10× bigger.</p>
+        </fieldset>
+
         <Field label="Title">
           <input className={inputCls} value={f.title} onChange={(e) => set('title', e.target.value)} required />
         </Field>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Demo artist">
-            <input className={inputCls} value={f.demoArtist ?? ''} onChange={(e) => set('demoArtist', e.target.value)} placeholder="Zheng Taing" />
-          </Field>
-          <Field label="Version note" hint='Shown after the artist, e.g. "V1"'>
-            <input className={inputCls} value={f.note ?? ''} onChange={(e) => set('note', e.target.value)} />
-          </Field>
-        </div>
+        <Field label="Demo artist">
+          <input className={inputCls} value={f.demoArtist ?? ''} onChange={(e) => set('demoArtist', e.target.value)} placeholder="Zheng Taing" />
+        </Field>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Status">
             <select className={inputCls} value={f.status} onChange={(e) => set('status', e.target.value as PitchStatus)}>
@@ -663,9 +925,9 @@ function DemoEditor({
         <Field label="Pitching to" hint="Separate names with commas. Leave empty for an open pitch.">
           <input className={inputCls} value={f.targets} onChange={(e) => set('targets', e.target.value)} />
         </Field>
-        <ChipPicker label="Market" options={markets} value={f.market} onChange={(v) => set('market', v)} />
-        <ChipPicker label="Act type" options={actTypes} value={f.actType} onChange={(v) => set('actType', v)} />
-        <ChipPicker label="Genre" options={genres} value={f.genre} onChange={(v) => set('genre', v)} />
+        <ChipPicker label="Market" group="market" options={tags.market} value={f.market} onChange={(v) => set('market', v)} onTagsChange={(t, c) => tagsChanged('market', t, c)} />
+        <ChipPicker label="Act type" group="actType" options={tags.actType} value={f.actType} onChange={(v) => set('actType', v)} onTagsChange={(t, c) => tagsChanged('actType', t, c)} />
+        <ChipPicker label="Genre" group="genre" options={tags.genre} value={f.genre} onChange={(v) => set('genre', v)} onTagsChange={(t, c) => tagsChanged('genre', t, c)} />
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Key">
             <input className={inputCls} value={f.key ?? ''} onChange={(e) => set('key', e.target.value)} placeholder="Ab major" />

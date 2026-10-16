@@ -18,8 +18,8 @@
  *   R2_*                  optional: Cloudflare R2 bucket holding the audio (see r2.ts)
  */
 import { createHash, createHmac, randomInt, timingSafeEqual } from 'node:crypto'
-import { open, readFile, stat } from 'node:fs/promises'
-import { join, resolve } from 'node:path'
+import { mkdir, open, readFile, stat, unlink, writeFile } from 'node:fs/promises'
+import { dirname, join, resolve } from 'node:path'
 import { objectKey, r2Config, r2Url } from './r2.js'
 import { pairs, store } from './store.js'
 
@@ -32,6 +32,16 @@ const CHUNK = 2 * 1024 * 1024
 const LOGIN_LIMIT = 5
 
 export type PitchStatus = 'available' | 'on-hold' | 'reserved' | 'placed'
+
+/** One recording of a song, e.g. the AI demo, V1 or V2. */
+export interface DemoVersion {
+  id: string
+  /** Shown on the version pill, e.g. "AI demo" or "V2". */
+  label: string
+  /** Audio file inside private-demos/ (or the R2 bucket). */
+  file: string
+  duration?: string
+}
 
 /** One demo / song pitch, as stored in private-demos/demos.json. */
 export interface Demo {
@@ -67,6 +77,70 @@ export interface Demo {
   reservation?: string
   /** Hidden from everyone (set on the admin page). */
   hidden?: boolean
+  /** Every version of the song. Without a list, the song has one version: `file`. */
+  versions?: DemoVersion[]
+  /** The version that plays first (defaults to the first in the list). */
+  defaultVersion?: string
+}
+
+/** A song's versions. A song without a list has one, made from its own file. */
+export function versionsOf(d: Demo): DemoVersion[] {
+  return d.versions?.length ? d.versions : [{ id: 'main', label: d.note ?? '', file: d.file, duration: d.duration }]
+}
+
+export function mainVersion(d: Demo) {
+  const all = versionsOf(d)
+  return all.find((v) => v.id === d.defaultVersion) ?? all[0]
+}
+
+/** Every stored file a song uses (all versions and the cover). */
+export function filesOf(d: Demo) {
+  return [...versionsOf(d).map((v) => v.file), d.cover].filter((f): f is string => Boolean(f))
+}
+
+/** The song's own file, length and note always follow the version that plays first. */
+function withMain(d: Demo): Demo {
+  if (!d.versions?.length) return d
+  const main = mainVersion(d)
+  return { ...d, file: main.file, duration: main.duration ?? d.duration, note: main.label, defaultVersion: main.id }
+}
+
+/** Filter values. Visitors' filters and the admin pickers start from these; the admin page can add, rename and remove. */
+export const DEFAULT_TAGS = {
+  market: ['K-pop', 'Western pop'],
+  actType: ['Girl group', 'Boy group', 'Solo artist'],
+  genre: ['Pop', 'Dance pop', 'Alt pop', 'Dark pop', 'R&B', 'Ballad', 'Pop ballad', 'Acoustic', 'EDM', 'Synth pop', 'City pop', 'Jersey club', 'Rap', 'Folk', 'Country', 'Bossa nova'],
+}
+export type TagGroup = keyof typeof DEFAULT_TAGS
+export type Tags = Record<TagGroup, string[]>
+export const TAG_GROUPS = Object.keys(DEFAULT_TAGS) as TagGroup[]
+
+export const tagList = (v?: string | string[]) => (Array.isArray(v) ? v : v ? [v] : []).filter(Boolean)
+
+/** The saved filter values (the defaults until the admin page changes a list). */
+export async function loadTags(): Promise<Tags> {
+  const s = store()
+  const saved = s ? pairs((await s.run([['HGETALL', 'tags']]))[0]) : {}
+  const out = { ...DEFAULT_TAGS }
+  for (const g of TAG_GROUPS) {
+    try {
+      if (saved[g]) out[g] = JSON.parse(saved[g]) as string[]
+    } catch {
+      // Keep the defaults if the saved list is unreadable.
+    }
+  }
+  return out
+}
+
+/** The saved lists plus anything a song uses that isn't in them, so every value can be filtered on. */
+export function tagsWithSongs(tags: Tags, demos: Demo[]): Tags {
+  const out = {} as Tags
+  for (const g of TAG_GROUPS) {
+    const list = [...tags[g]]
+    for (const d of demos) for (const v of tagList(d[g])) if (!list.some((x) => x.toLowerCase() === v.toLowerCase())) list.push(v)
+    out[g] = list
+  }
+  return out
 }
 
 /** Someone with an access code. */
@@ -84,14 +158,23 @@ export interface Person {
 
 /** The fields visitors are allowed to see; private management fields are dropped here. */
 export function toPublic(d: Demo) {
-  const { file: _file, cover, privateNotes: _notes, reservation: _reservation, hidden: _hidden, ...rest } = d
+  const { file: _file, cover, privateNotes: _notes, reservation: _reservation, hidden: _hidden, versions: _versions, defaultVersion: _default, ...rest } = d
+  const base = `/api/demos/audio?id=${encodeURIComponent(d.id)}`
+  const all = versionsOf(d)
+  const main = mainVersion(d)
+  // One version: plain link, no pills. Several: each version gets its own link.
+  const versions =
+    all.length > 1 ? all.map((v) => ({ id: v.id, label: v.label, duration: v.duration, audioUrl: `${base}&v=${encodeURIComponent(v.id)}` })) : undefined
   return {
     ...rest,
     status: d.status ?? 'available',
     holdUntil: d.status === 'on-hold' ? d.holdUntil : undefined,
     placedWith: d.status === 'placed' ? d.placedWith : undefined,
-    audioUrl: `/api/demos/audio?id=${encodeURIComponent(d.id)}`,
-    coverUrl: cover ? `/api/demos/audio?id=${encodeURIComponent(d.id)}&kind=cover` : undefined,
+    audioUrl: versions ? versions.find((v) => v.id === main.id)!.audioUrl : base,
+    versions,
+    defaultVersion: versions ? main.id : undefined,
+    // The file name's tail changes when the cover is replaced, so browsers fetch the new one.
+    coverUrl: cover ? `${base}&kind=cover&c=${encodeURIComponent(cover.slice(-12))}` : undefined,
   }
 }
 
@@ -297,7 +380,37 @@ export async function loadDemos(): Promise<Demo[]> {
     .map((v) => JSON.parse(v) as Demo & { addedAt?: string })
     .sort((a, b) => (b.addedAt ?? '').localeCompare(a.addedAt ?? ''))
   const demos = [...added, ...fromFile.filter((d) => !added.some((a) => a.id === d.id))]
-  return demos.map((d) => (edits[d.id] ? { ...d, ...(JSON.parse(edits[d.id]) as Partial<Demo>), id: d.id, file: d.file, cover: d.cover } : d))
+  return demos.map((d) => withMain(edits[d.id] ? { ...d, ...(JSON.parse(edits[d.id]) as Partial<Demo>), id: d.id } : d))
+}
+
+/** Writes changes for one song on top of its earlier admin edits. */
+export async function saveDemoEdit(id: string, patch: Partial<Demo>) {
+  const s = store()!
+  const [prev] = await s.run([['HGET', 'demo-edits', id]])
+  const merged = { ...(prev ? (JSON.parse(String(prev)) as Partial<Demo>) : {}), ...patch }
+  await s.run([['HSET', 'demo-edits', id, JSON.stringify(merged)]])
+}
+
+const UPLOADED = /^uploads\/(covers\/)?[\w-]+\.\w+$/
+
+/** Deletes a file uploaded on the admin page (from R2, or from private-demos/ locally). Other files are left alone. */
+export async function removeUpload(file: string) {
+  if (!UPLOADED.test(file)) return
+  const r2 = r2Config()
+  if (r2) {
+    await fetch(r2Url(r2, 'DELETE', objectKey(file), 300), { method: 'DELETE' }).catch(() => {})
+    return
+  }
+  await unlink(join(DEMOS_DIR, file)).catch(() => {})
+}
+
+/** Local stand-in for R2 uploads (npm run dev without R2): saves the file in private-demos/uploads/. */
+export async function saveLocalUpload(file: string, data: ArrayBuffer) {
+  if (!UPLOADED.test(file)) return false
+  const path = join(DEMOS_DIR, file)
+  await mkdir(dirname(path), { recursive: true })
+  await writeFile(path, Buffer.from(data))
+  return true
 }
 
 async function favoritesOf(personId: string) {
@@ -373,6 +486,7 @@ export async function list(request: Request) {
     me: person.id === LEGACY_ID ? null : { name: person.name },
     favorites: favs ? favs.filter((id) => demos.some((d) => d.id === id)) : null,
     demos: demos.map(toPublic),
+    tags: tagsWithSongs(await loadTags(), demos),
   })
 }
 
@@ -488,15 +602,18 @@ export async function audio(request: Request) {
   const demo = (await loadDemos()).find((d) => d.id === id && !d.hidden)
   if (!demo || !canHear(auth.person, id)) return new Response('Not found', { status: 404 })
   const isCover = params.get('kind') === 'cover'
+  const all = versionsOf(demo)
+  const version = all.find((v) => v.id === params.get('v')) ?? mainVersion(demo)
+  const title = all.length > 1 && version.label ? `${demo.title} (${version.label})` : demo.title
 
   // Count a play when the song starts loading from the beginning (at most once per 30 minutes).
   const range = request.headers.get('range')
   if (!isCover && (!range || /^bytes=0-/.test(range)) && !(await rateLimit(`play:${auth.person.id}:${id}`, 1, 1800))) {
     const { person } = auth
-    await logEvent({ who: person.id, name: person.name, event: 'played', demoId: id, title: demo.title }, [
+    await logEvent({ who: person.id, name: person.name, event: 'played', demoId: id, title }, [
       ['HINCRBY', 'stats', `${person.id}:plays`, 1],
       ['HSET', 'stats', `${person.id}:seen`, new Date().toISOString()],
     ])
   }
-  return serveFile(request, isCover ? demo.cover : demo.file)
+  return serveFile(request, isCover ? demo.cover : version.file)
 }

@@ -1,6 +1,14 @@
 /** Song-pitch data as sent by /api/demos (private fields are already removed by the server). */
 export type PitchStatus = 'available' | 'on-hold' | 'reserved' | 'placed'
 
+/** One recording of a song (AI demo, V1, V2…). */
+export interface PitchVersion {
+  id: string
+  label: string
+  duration?: string
+  audioUrl: string
+}
+
 export interface Pitch {
   id: string
   title: string
@@ -20,6 +28,24 @@ export interface Pitch {
   pitchNotes?: string
   holdUntil?: string
   placedWith?: string
+  /** Only when the song has more than one version; shown as pills on its card. */
+  versions?: PitchVersion[]
+  defaultVersion?: string
+}
+
+/** The pitch as it plays with one version chosen (its link, length and label). */
+export function withVersion(p: Pitch, versionId?: string): Pitch {
+  const v = p.versions?.find((x) => x.id === versionId)
+  return v ? { ...p, audioUrl: v.audioUrl, duration: v.duration ?? p.duration, note: v.label } : p
+}
+
+/** Which version is playing, worked out from the link. */
+export const versionOf = (p: Pitch) => p.versions?.find((v) => v.audioUrl === p.audioUrl)?.id ?? p.defaultVersion
+
+export interface PitchTags {
+  market: string[]
+  actType: string[]
+  genre: string[]
 }
 
 export const statuses: { id: PitchStatus; label: string; color: string }[] = [
@@ -29,7 +55,7 @@ export const statuses: { id: PitchStatus; label: string; color: string }[] = [
   { id: 'placed', label: 'Placed', color: '#a3a3a3' },
 ]
 
-/** Filter options. The values are exactly what to type in private-demos/demos.json. */
+/** Default filter options (the admin page can add, rename and remove). The values are exactly what to type in private-demos/demos.json. */
 export const markets = ['K-pop', 'Western pop']
 export const actTypes = ['Girl group', 'Boy group', 'Solo artist']
 export const genres = [

@@ -119,6 +119,8 @@ function fileStore(path?: string): Store {
         h[a[0]] = String(Number(h[a[0]] ?? 0) + Number(a[1]))
         return Number(h[a[0]])
       }
+      case 'HKEYS':
+        return Object.keys(hash(k))
       case 'HGETALL':
         return Object.entries(hash(k)).flat()
       case 'SADD': {

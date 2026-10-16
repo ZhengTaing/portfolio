@@ -205,7 +205,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         if (!t) return
         setQueueState(tracks)
         if (path) setSourcePath(path)
-        if (current?.id === t.id) {
+        // Same song and same version: just resume. A different version of it starts over.
+        if (current?.id === t.id && current.audioUrl === t.audioUrl) {
           setFromQueue(false)
           setAnchorId(t.id)
           if (audioRef.current?.paused) toggle()

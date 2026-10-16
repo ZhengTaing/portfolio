@@ -128,6 +128,76 @@ describe('personal access codes', () => {
     expect(people.people[0].favorites).toEqual([])
   })
 
+  it('lets the admin swap the cover and song files, and add versions shown as one song', async () => {
+    const created = await call('demo-create', {
+      cover: 'uploads/covers/c1.jpg',
+      versions: [{ id: 'ai', label: 'AI demo', file: 'uploads/a1.mp3', duration: '3:01' }],
+      patch: { title: 'Swap Test' },
+    })
+    expect(created.ok).toBe(true)
+    const id = created.id as string
+    const find = async () => ((await call('demos')).demos as Record<string, any>[]).find((d) => d.id === id)!
+
+    // Swap the cover, replace the AI demo's file, and add a V2 that plays first.
+    await call('demo', {
+      id,
+      patch: {
+        cover: 'uploads/covers/c2.jpg',
+        versions: [
+          { id: 'ai', label: 'AI demo', file: 'uploads/a2.mp3', duration: '3:02' },
+          { id: 'v2', label: 'V2', file: 'uploads/b1.mp3', duration: '2:40' },
+        ],
+        defaultVersion: 'v2',
+      },
+    })
+    let d = await find()
+    expect(d.versions.map((v: { label: string }) => v.label)).toEqual(['AI demo', 'V2'])
+    expect(d.defaultVersion).toBe('v2')
+    expect(d.duration).toBe('2:40')
+    expect(d.note).toBe('V2')
+    expect(d.coverUrl).toContain('c2.jpg')
+
+    // Swap back: the AI demo plays first again and the cover can be removed.
+    await call('demo', { id, patch: { cover: '', versions: d.versions, defaultVersion: 'ai' } })
+    d = await find()
+    expect(d.defaultVersion).toBe('ai')
+    expect(d.coverUrl).toBeUndefined()
+
+    // Files that are not fresh uploads or already the song's own are refused.
+    const bad = await admin(req('/api/admin?action=demo', { method: 'POST', body: JSON.stringify({ id, patch: { versions: [{ file: '../secret.mp3' }] } }), cookie: adminCookie }))
+    expect(bad.status).toBe(400)
+
+    // Visitors get one song with a link per version.
+    const { person } = await call('person-create', { name: 'Vee' })
+    const cookie = cookieOf(await signIn(person.code))
+    const listed = (await (await list(req('/api/demos', { cookie }))).json()) as { demos: Record<string, any>[] }
+    const pub = listed.demos.find((x) => x.id === id)!
+    expect(pub.versions).toHaveLength(2)
+    expect(pub.versions[1].audioUrl).toContain('&v=v2')
+    expect(pub.audioUrl).toBe(pub.versions[0].audioUrl)
+    expect(JSON.stringify(pub)).not.toContain('uploads/')
+  })
+
+  it('lets the admin add, rename and remove genres, updating songs that use them', async () => {
+    const created = await call('demo-create', { versions: [{ file: 'uploads/t1.mp3' }], patch: { title: 'Tag Test', genre: ['Pop'] } })
+    const id = created.id as string
+    let res = await call('tags', { group: 'genre', op: 'add', value: 'Hyperpop' })
+    expect(res.tags.genre).toContain('Hyperpop')
+    // Adding the same name twice (any capitalisation) keeps one.
+    res = await call('tags', { group: 'genre', op: 'add', value: 'hyperpop' })
+    expect(res.tags.genre.filter((g: string) => g.toLowerCase() === 'hyperpop')).toHaveLength(1)
+
+    res = await call('tags', { group: 'genre', op: 'rename', value: 'Pop', to: 'Mainstream pop' })
+    expect(res.tags.genre).toContain('Mainstream pop')
+    expect(res.tags.genre).not.toContain('Pop')
+    let d = ((await call('demos')).demos as Record<string, any>[]).find((x) => x.id === id)!
+    expect(d.genre).toEqual(['Mainstream pop'])
+
+    await call('tags', { group: 'genre', op: 'remove', value: 'Mainstream pop' })
+    d = ((await call('demos')).demos as Record<string, any>[]).find((x) => x.id === id)!
+    expect(d.genre).toEqual([])
+  })
+
   it('the old shared password keeps working until it is turned off', async () => {
     process.env.DEMOS_PASSWORD = 'shared-password'
     const cookie = cookieOf(await signIn('shared-password'))

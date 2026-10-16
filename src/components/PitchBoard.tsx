@@ -9,8 +9,11 @@ import {
   markets,
   matches,
   statuses,
+  versionOf,
+  withVersion,
   type Pitch,
   type PitchFilters,
+  type PitchTags,
 } from '../lib/pitch'
 import { useFavorites } from '../lib/favorites'
 import { useFlip } from '../lib/motion'
@@ -64,6 +67,30 @@ function Targets({ pitch }: { pitch: Pitch }) {
   )
 }
 
+/** AI demo · V1 · V2 — picks which version of the song plays. */
+function VersionPills({ pitch, onChoose, className = '' }: { pitch: Pitch; onChoose: (versionId: string) => void; className?: string }) {
+  if (!pitch.versions || pitch.versions.length < 2) return null
+  const chosen = versionOf(pitch)
+  return (
+    <div role="group" aria-label={`Versions of ${pitch.title}`} className={`relative z-10 flex flex-wrap gap-1 ${className}`}>
+      {pitch.versions.map((v, i) => {
+        const on = v.id === chosen
+        return (
+          <button
+            key={v.id}
+            type="button"
+            aria-pressed={on}
+            onClick={() => onChoose(v.id)}
+            className={`label border px-1.5 py-0.5 uppercase transition-colors ${on ? 'border-accent bg-accent text-ink' : 'border-white/30 hover:border-white'}`}
+          >
+            {v.label || `Version ${i + 1}`}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 const metaLine = (p: Pitch) =>
   [asList(p.market).join(' / '), asList(p.actType).join(' / '), asList(p.genre).join(' / '), p.key ?? '', p.bpm ? `${p.bpm} BPM` : '']
     .filter(Boolean)
@@ -87,11 +114,13 @@ function FilterMenu({
   setFilters,
   pitches,
   resultCount,
+  tags,
 }: {
   filters: PitchFilters
   setFilters: (f: PitchFilters) => void
   pitches: Pitch[]
   resultCount: number
+  tags: PitchTags
 }) {
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -178,7 +207,7 @@ function FilterMenu({
           )}
           {group(
             'Market',
-            markets.map((m) => (
+            tags.market.map((m) => (
               <Chip key={m} on={filters.market.includes(m)} onClick={() => toggle('market', m)}>
                 {m}
               </Chip>
@@ -186,7 +215,7 @@ function FilterMenu({
           )}
           {group(
             'Act type',
-            actTypes.map((a) => (
+            tags.actType.map((a) => (
               <Chip key={a} on={filters.actType.includes(a)} onClick={() => toggle('actType', a)}>
                 {a}
               </Chip>
@@ -194,7 +223,7 @@ function FilterMenu({
           )}
           {group(
             'Genre',
-            genres.map((g) => (
+            tags.genre.map((g) => (
               <Chip key={g} on={filters.genre.includes(g)} onClick={() => toggle('genre', g)}>
                 {g}
               </Chip>
@@ -249,8 +278,20 @@ function Backdrop({ pitch }: { pitch?: Pitch }) {
  * Song-pitch board for the private demos: filter menu, a player with the
  * current playlist beside it, and horizontal pitch cards that feed the player.
  */
-export function PitchBoard({ pitches, toolbarStart }: { pitches: Pitch[]; toolbarStart?: ReactNode }) {
+export function PitchBoard({
+  pitches: songs,
+  toolbarStart,
+  tags = { market: markets, actType: actTypes, genre: genres },
+}: {
+  pitches: Pitch[]
+  toolbarStart?: ReactNode
+  /** Filter options sent by the server (defaults to the built-in lists). */
+  tags?: PitchTags
+}) {
   const [filters, setFilters] = useState<PitchFilters>(emptyFilters)
+  // Which version of each song plays (songs with one version ignore this).
+  const [chosen, setChosen] = useState<Record<string, string>>({})
+  const pitches = useMemo(() => songs.map((s) => withVersion(s, chosen[s.id] ?? s.defaultVersion)), [songs, chosen])
   const favs = useFavorites()
   const [onlyFavs, setOnlyFavs] = useState(false)
   const showFavs = favs.enabled && onlyFavs
@@ -267,12 +308,20 @@ export function PitchBoard({ pitches, toolbarStart }: { pitches: Pitch[]; toolba
   const listRef = useRef<HTMLUListElement>(null)
   useFlip(listRef, visible.map((x) => x.id).join())
 
+  /** Tapping a version pill switches to it and plays it. */
+  function chooseVersion(id: string, versionId: string) {
+    const next = { ...chosen, [id]: versionId }
+    setChosen(next)
+    const list = (visible.length ? visible : pitches).map((x) => (x.id === id ? withVersion(songs.find((s) => s.id === id)!, versionId) : x))
+    p.playFrom(list, id)
+  }
+
   return (
     <div style={{ '--room-accent': accent, '--room-line': 'rgb(255 255 255 / 0.16)' } as CSSProperties}>
       <Backdrop pitch={track} />
       <div className="relative z-30 mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>{toolbarStart}</div>
-        <FilterMenu filters={filters} setFilters={setFilters} pitches={pitches} resultCount={visible.length} />
+        <FilterMenu filters={filters} setFilters={setFilters} pitches={pitches} resultCount={visible.length} tags={tags} />
       </div>
 
       {favs.enabled && (
@@ -326,6 +375,7 @@ export function PitchBoard({ pitches, toolbarStart }: { pitches: Pitch[]; toolba
                 </h2>
                 <HeartButton id={track.id} title={track.title} size="lg" />
               </div>
+              <VersionPills pitch={track} onChoose={(v) => chooseVersion(track.id, v)} className="mt-2" />
               <Ticker running={p.playing} className="label mt-2 text-white/80">
                 Demo: {track.demoArtist || 'Zheng Taing'}
                 {track.targetArtists?.length ? ` · For → ${track.targetArtists.join(', ')}` : ''}
@@ -490,11 +540,12 @@ export function PitchBoard({ pitches, toolbarStart }: { pitches: Pitch[]; toolba
                         </h3>
                         <p className="label text-muted mt-1">
                           Demo: {pitch.demoArtist || 'Zheng Taing'}
-                          {pitch.note ? ` (${pitch.note})` : ''}
+                          {pitch.note && !pitch.versions ? ` (${pitch.note})` : ''}
                         </p>
                       </div>
                       <StatusBadge pitch={pitch} className="shrink-0" />
                     </div>
+                    <VersionPills pitch={pitch} onChoose={(v) => chooseVersion(pitch.id, v)} />
                     <Targets pitch={pitch} />
                     {meta && <p className="label text-muted">{meta}</p>}
                     {pitch.pitchNotes && <p className="line-clamp-2 text-xs leading-relaxed text-[#ddd]">{pitch.pitchNotes}</p>}

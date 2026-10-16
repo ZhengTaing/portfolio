@@ -52,7 +52,7 @@ function demosApi(): Plugin {
     '/api/demos/logout': { POST: ['/server/demos.ts', 'logout'] },
     '/api/demos/favorite': { POST: ['/server/demos.ts', 'favorite'] },
     '/api/demos/audio': { GET: ['/server/demos.ts', 'audio'] },
-    '/api/admin': { GET: ['/server/admin.ts', 'admin'], POST: ['/server/admin.ts', 'admin'] },
+    '/api/admin': { GET: ['/server/admin.ts', 'admin'], POST: ['/server/admin.ts', 'admin'], PUT: ['/server/admin.ts', 'admin'] },
   }
   return {
     name: 'demos-api',

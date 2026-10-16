@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { PitchBoard } from '../components/PitchBoard'
 import { clearFavorites, setFavorites } from '../lib/favorites'
-import type { Pitch } from '../lib/pitch'
+import type { Pitch, PitchTags } from '../lib/pitch'
 import { usePlayer } from '../lib/player'
 import { usePageMeta } from '../lib/usePageMeta'
 
@@ -11,7 +11,7 @@ type Demo = Pitch
 type State =
   | { kind: 'checking' }
   | { kind: 'locked'; error?: string; ended?: boolean }
-  | { kind: 'unlocked'; demos: Demo[]; name?: string }
+  | { kind: 'unlocked'; demos: Demo[]; name?: string; tags?: PitchTags }
   | { kind: 'unavailable'; message: string }
 
 async function fetchDemos(): Promise<State> {
@@ -22,9 +22,9 @@ async function fetchDemos(): Promise<State> {
       return { kind: 'locked', ended: Boolean(body.ended) }
     }
     if (!res.ok) return { kind: 'unavailable', message: 'The demos are not available right now.' }
-    const body = (await res.json()) as { demos: Demo[]; me?: { name: string }; favorites?: string[] | null }
+    const body = (await res.json()) as { demos: Demo[]; me?: { name: string }; favorites?: string[] | null; tags?: PitchTags }
     setFavorites(body.favorites ?? null)
-    return { kind: 'unlocked', demos: body.demos, name: body.me?.name }
+    return { kind: 'unlocked', demos: body.demos, name: body.me?.name, tags: body.tags }
   } catch {
     return { kind: 'unavailable', message: 'Could not reach the server. Check your connection and try again.' }
   }
@@ -202,6 +202,7 @@ export default function UnreleasedPage() {
           ) : (
             <PitchBoard
               pitches={state.demos}
+              tags={state.tags}
               toolbarStart={
                 <div className="label flex flex-wrap items-center gap-x-4 gap-y-1 py-2">
                   {state.name && (

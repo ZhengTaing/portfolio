@@ -205,6 +205,49 @@ describe('unreleased demos', () => {
     expect(screen.getByRole('link', { name: /Demos & works in progress/ })).toHaveAttribute('href', '/music/unreleased')
   })
 
+  it('shows a song with several versions as one card with version pills, and uses custom genres', async () => {
+    const base = '/api/demos/audio?id=d1'
+    const demos = [
+      {
+        id: 'd1',
+        title: 'Many Takes',
+        audioUrl: `${base}&v=ai`,
+        status: 'available',
+        genre: ['Hyperpop'],
+        defaultVersion: 'ai',
+        versions: [
+          { id: 'ai', label: 'AI demo', duration: '3:00', audioUrl: `${base}&v=ai` },
+          { id: 'v2', label: 'V2', duration: '2:30', audioUrl: `${base}&v=v2` },
+        ],
+      },
+    ]
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) =>
+        url === '/api/demos'
+          ? new Response(JSON.stringify({ demos, favorites: [], tags: { market: [], actType: [], genre: ['Pop', 'Hyperpop'] } }), { status: 200 })
+          : new Response('{}', { status: 404 }),
+      ),
+    )
+    vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {})
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.resolve())
+    const user = userEvent.setup()
+    renderAt('/music/unreleased')
+
+    const cards = await screen.findByRole('list', { name: 'Song pitches' })
+    expect(within(cards).getAllByRole('heading', { name: 'Many Takes' })).toHaveLength(1)
+    const pills = within(cards).getByRole('group', { name: 'Versions of Many Takes' })
+    expect(within(pills).getByRole('button', { name: 'AI demo' })).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(within(pills).getByRole('button', { name: 'V2' }))
+    expect(document.querySelector('audio')).toHaveAttribute('src', `${base}&v=v2`)
+    expect(within(pills).getByRole('button', { name: 'V2' })).toHaveAttribute('aria-pressed', 'true')
+    expect(within(cards).getByText('2:30')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /^Filters/ }))
+    expect(screen.getByRole('button', { name: 'Hyperpop' })).toBeInTheDocument()
+  })
+
   it('asks for an access code, rejects a wrong one, and shows demos after unlocking', async () => {
     const demos = [
       {

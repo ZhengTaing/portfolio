@@ -34,4 +34,14 @@ password-checked `/api/demos` functions on Vercel.
 ```
 
 Spell market, act type and genre exactly as listed so the filters pick them up.
+New markets, act types and genres can also be added, renamed or removed on the admin page
+(**Edit list** / **+ Add** in the song editor); renaming updates every song using it.
+
+## Covers and versions (admin page)
+
+In the song editor on `/admin` you can replace or remove the cover and replace any song file,
+as often as you like. A song can have several versions (e.g. "AI demo", "V1", "V2"): visitors
+see one card with a pill per version, and "Plays first" picks the one that starts.
+Files you replace or remove there are deleted from storage only if they were uploaded on the
+admin page; files in this folder are never touched.
 Without a `cover`, the site shows a generated color cover.

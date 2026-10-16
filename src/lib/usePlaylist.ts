@@ -17,13 +17,14 @@ export function usePlaylist<T extends PlaylistTrack>(tracks: T[]) {
   const { pathname } = useLocation()
   const [cuedId, setCuedId] = useState<string | undefined>(tracks[0]?.id)
 
-  const ids = tracks.map((t) => t.id).join('|')
+  // The link is part of the key, so switching a song's version updates the queue too.
+  const ids = tracks.map((t) => `${t.id} ${t.audioUrl}`).join('|')
   const active = Boolean(player.current && tracks.some((t) => t.id === player.current!.id))
   const ownsQueue = player.queue.length > 0 && player.queue.some((q) => tracks.some((t) => t.id === q.id))
 
   // Keep the global queue in step with this list (filters) while it's playing from here.
   useEffect(() => {
-    if (ownsQueue && player.queue.map((t) => t.id).join('|') !== ids) player.setQueue(tracks)
+    if (ownsQueue && player.queue.map((t) => `${t.id} ${t.audioUrl}`).join('|') !== ids) player.setQueue(tracks)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ids, ownsQueue])
 
@@ -40,8 +41,15 @@ export function usePlaylist<T extends PlaylistTrack>(tracks: T[]) {
     player.play(tracks, id, pathname)
   }
 
+  /** Play `id` from a list that differs from `tracks` (e.g. a version was just chosen). */
+  const playFrom = (list: T[], id: string) => {
+    setCuedId(id)
+    player.play(list, id, pathname)
+  }
+
   return {
     track,
+    playFrom,
     index,
     active,
     playing: active && player.playing,
